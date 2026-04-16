@@ -111,6 +111,7 @@ async def lifespan(app: FastAPI):
     try:
         from rec0.embeddings import get_embedding_model
         get_embedding_model()
+        logger.info("Embedding model warmed up")
     except Exception as exc:
         logger.warning("Embedding model pre-warm failed: %s", exc)
 
