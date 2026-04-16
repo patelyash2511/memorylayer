@@ -4,9 +4,28 @@ import styles from './Modal.module.css'
 
 export default function Modal({ open, onClose }) {
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    const form = e.currentTarget
+    const name = form.elements[0].value.trim()
+    const email = form.elements[1].value.trim()
+    const company = form.elements[2].value.trim()
+
+    setLoading(true)
+    setError(null)
+
+    console.log('Early access signup:', { name, email, company })
+
+    // TODO: replace with real backend call when Resend is wired
+    // await fetch('/api/signup', { method: 'POST', body: JSON.stringify({ name, email, company }) })
+
+    // Simulate network delay so the loading state is visible
+    await new Promise((r) => setTimeout(r, 600))
+
+    setLoading(false)
     setSubmitted(true)
   }
 
@@ -46,7 +65,10 @@ export default function Modal({ open, onClose }) {
                   <input type="text" placeholder="Your name" required className={styles.input} />
                   <input type="email" placeholder="Work email" required className={styles.input} />
                   <input type="text" placeholder="Company / project (optional)" className={styles.input} />
-                  <button type="submit" className={styles.submit}>Start building free →</button>
+                  {error && <p className={styles.error}>{error}</p>}
+                  <button type="submit" className={styles.submit} disabled={loading}>
+                    {loading ? 'Joining…' : 'Start building free →'}
+                  </button>
                 </form>
               </>
             ) : (

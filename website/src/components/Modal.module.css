@@ -52,10 +52,19 @@
   cursor: pointer; transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
   margin-top: 4px; font-family: 'DM Sans', sans-serif;
 }
-.submit:hover {
+.submit:hover:not(:disabled) {
   opacity: 0.92;
   box-shadow: 0 8px 24px rgba(0,229,180,0.3);
   transform: translateY(-1px);
+}
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.error {
+  font-size: 13px;
+  color: #ff6b6b;
+  margin: -4px 0;
 }
 
 .success { text-align: center; padding: 20px 0; }
