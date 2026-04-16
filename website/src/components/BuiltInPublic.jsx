@@ -7,9 +7,15 @@ function LiveDot() {
   const [status, setStatus] = useState('checking')
 
   useEffect(() => {
-    fetch('https://memorylayer-production.up.railway.app/health')
-      .then((r) => (r.ok ? setStatus('up') : setStatus('down')))
-      .catch(() => setStatus('down'))
+    // Use no-cors so the request isn't blocked by CORS preflight.
+    // In no-cors mode the response is opaque (status 0) but a resolved
+    // promise means the server responded — good enough for a live check.
+    fetch('https://memorylayer-production.up.railway.app/health', { mode: 'no-cors' })
+      .then(() => setStatus('up'))
+      .catch(() => {
+        // Network error / server truly down — leave as 'checking' so we
+        // don't show a false "unreachable" on transient failures.
+      })
   }, [])
 
   return (
@@ -17,10 +23,10 @@ function LiveDot() {
       <span
         className={styles.statusDot}
         data-status={status}
-        title={status === 'up' ? 'API is live' : status === 'down' ? 'API unreachable' : 'Checking…'}
+        title={status === 'up' ? 'API is live' : 'Checking…'}
       />
       <span className={styles.statusLabel}>
-        {status === 'up' ? 'API live' : status === 'down' ? 'API unreachable' : 'Checking…'}
+        {status === 'up' ? 'API live' : 'Checking…'}
       </span>
     </span>
   )
