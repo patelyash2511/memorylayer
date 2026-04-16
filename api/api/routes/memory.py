@@ -151,7 +151,7 @@ def recall_memories(
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> RecallListResponse:
-    """Recall memories using cosine similarity (OpenAI) or word-overlap fallback."""
+    """Semantic recall using fastembed ONNX local model (BAAI/bge-small-en-v1.5). No external APIs."""
     _check_rate(api_key)
     t_start = time.monotonic()
 

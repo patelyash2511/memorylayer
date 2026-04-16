@@ -15,7 +15,7 @@ class Memory(Base):
     content = Column(Text, nullable=False)
     summary = Column(Text, nullable=True)
     importance = Column(Float, default=1.0, nullable=False)
-    # JSON-encoded embedding vector (set at store time if OPENAI_API_KEY available)
+    # JSON-encoded embedding vector (set at store time via fastembed ONNX local model)
     embedding = Column(Text, nullable=True)
     recall_count = Column(Integer, default=0, nullable=False)
     last_recalled_at = Column(DateTime(timezone=True), nullable=True)
