@@ -1,0 +1,31 @@
+/* Global utility classes used by components */
+.btn-big {
+  font-size: 15px; font-weight: 600; color: #000;
+  background: linear-gradient(135deg, #00e5b4 0%, #00c99d 100%);
+  border: none; cursor: pointer; font-family: 'Inter', sans-serif;
+  padding: 13px 28px; border-radius: 100px;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.25s;
+  white-space: nowrap; letter-spacing: 0.1px;
+}
+.btn-big:hover { opacity: .92; transform: translateY(-2px); box-shadow: 0 10px 32px rgba(0,229,180,.35); }
+
+.btn-outline {
+  font-size: 15px; font-weight: 400; color: rgba(220,225,255,0.85);
+  background: none; border: 1px solid rgba(200,210,255,.15);
+  cursor: pointer; font-family: 'Inter', sans-serif;
+  padding: 13px 28px; border-radius: 100px;
+  transition: border-color .2s, background .2s, color .2s, box-shadow .2s;
+  white-space: nowrap;
+}
+.btn-outline:hover { background: rgba(124,92,252,.07); border-color: rgba(124,92,252,.45); color: #fff; box-shadow: 0 0 20px rgba(124,92,252,.14); }
+
+.section-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: 10.5px;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent2);
+  margin-bottom: 14px; display: block; opacity: 0.9;
+}
+.section-heading {
+  font-family: 'Syne', sans-serif; font-size: clamp(28px,3.2vw,42px);
+  font-weight: 800; letter-spacing: -1.5px; line-height: 1.12; margin-bottom: 18px;
+}
+.section-body { font-size: 15.5px; color: var(--muted2); line-height: 1.8; font-weight: 300; }

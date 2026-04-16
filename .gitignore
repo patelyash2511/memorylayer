@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+dist/
+*.egg-info/
+node_modules/
+.DS_Store
+*.whl
+*.tar.gz
+memorylayer.db

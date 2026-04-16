@@ -1,0 +1,41 @@
+.section { padding: 80px 48px; background: #0b0b16; border-top: 1px solid var(--border); }
+.inner { max-width: 1100px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 56px; }
+.grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 34px;
+  cursor: default;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.card:hover {
+  border-color: rgba(124,92,252,0.28);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(124,92,252,0.1);
+}
+
+.tag {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 16px;
+}
+.tagHealth { background: rgba(0,229,180,0.08); color: var(--accent2); border: 1px solid rgba(0,229,180,0.15); }
+.tagEdu    { background: rgba(124,92,252,0.08); color: #a98bff; border: 1px solid rgba(124,92,252,0.15); }
+.tagCs     { background: rgba(249,169,110,0.08); color: #f9a96e; border: 1px solid rgba(249,169,110,0.15); }
+.tagSales  { background: rgba(122,184,245,0.08); color: #7ab8f5; border: 1px solid rgba(122,184,245,0.15); }
+
+.title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px; font-weight: 700;
+  margin-bottom: 10px; letter-spacing: -0.5px;
+}
+.body { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+@media (max-width: 900px) { .section { padding: 60px 24px; } .grid { grid-template-columns: 1fr; } }
