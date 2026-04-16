@@ -1,9 +1,28 @@
 import styles from './Footer.module.css'
 
 const COLS = [
-  { heading: 'Product', links: ['Features', 'Pricing', 'Compare', 'Changelog', 'Status'] },
-  { heading: 'Developers', links: ['Documentation', 'API Reference', 'GitHub', 'Discord', 'Examples'] },
-  { heading: 'Company', links: ['About', 'Blog', 'Privacy Policy', 'Terms of Service', 'Contact'] },
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Features', href: '#features' },
+      { label: 'Pricing', href: '#pricing' },
+      { label: 'Compare', href: '#compare' },
+    ],
+  },
+  {
+    heading: 'Developers',
+    links: [
+      { label: 'API Docs', href: 'https://memorylayer-production.up.railway.app/docs' },
+      { label: 'GitHub', href: 'https://github.com/patelyash2511/rec0' },
+      { label: 'PyPI', href: 'https://pypi.org/project/memorylayer-py/' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { label: 'MIT License', href: 'https://github.com/patelyash2511/rec0/blob/master/LICENSE' },
+    ],
+  },
 ]
 
 export default function Footer() {
@@ -19,19 +38,20 @@ export default function Footer() {
             <h4>{col.heading}</h4>
             <ul>
               {col.links.map((l) => (
-                <li key={l}><a href="#">{l}</a></li>
+                <li key={l.label}>
+                  <a href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+                    {l.label}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
       <div className={styles.bottom}>
-        <p>© 2026 Rec0 · rec0.ai · Built by Yash · Pre-seed · April 2026</p>
+        <p>© 2026 Rec0 · Built by Yash · Open Beta · April 2026 · MIT License</p>
         <div className={styles.socials}>
-          <a href="#" title="Twitter/X">𝕏</a>
-          <a href="#" title="GitHub">⌥</a>
-          <a href="#" title="Discord">◈</a>
-          <a href="#" title="LinkedIn">in</a>
+          <a href="https://github.com/patelyash2511/rec0" title="GitHub" target="_blank" rel="noopener noreferrer">⌥</a>
         </div>
       </div>
     </footer>

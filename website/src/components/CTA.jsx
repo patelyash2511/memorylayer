@@ -19,12 +19,14 @@ export default function CTA({ onCTA }) {
         <p className={styles.sub}>Free forever up to 10K ops. No credit card needed. Ship today.</p>
         <div className={styles.actions}>
           <button className="btn-big" onClick={onCTA}>Start building free →</button>
-          <button
+          <a
             className="btn-outline"
-            onClick={() => document.getElementById('code-section')?.scrollIntoView({ behavior: 'smooth' })}
+            href="https://memorylayer-production.up.railway.app/docs"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Read the docs
-          </button>
+            Read the docs →
+          </a>
         </div>
       </FadeIn>
     </section>

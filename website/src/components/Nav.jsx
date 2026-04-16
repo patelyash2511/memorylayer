@@ -7,7 +7,7 @@ const links = [
   { label: 'Use Cases', href: '#usecases' },
   { label: 'Compare', href: '#compare' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Docs', href: '#' },
+  { label: 'Docs', href: 'https://memorylayer-production.up.railway.app/docs', external: true },
 ]
 
 export default function Nav({ onCTA }) {
@@ -36,7 +36,7 @@ export default function Nav({ onCTA }) {
         <ul className={styles.links}>
           {links.map((l) => (
             <li key={l.label}>
-              <a href={l.href}>{l.label}</a>
+              <a href={l.href} target={l.external ? '_blank' : undefined} rel={l.external ? 'noopener noreferrer' : undefined}>{l.label}</a>
             </li>
           ))}
         </ul>

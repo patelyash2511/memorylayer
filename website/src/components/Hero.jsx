@@ -3,9 +3,9 @@ import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import styles from './Hero.module.css'
 
 const STATS = [
-  { value: '10M+', label: 'Memories stored' },
+  { value: '28/28', label: 'Tests passing' },
   { value: '<100ms', label: 'P95 recall latency' },
-  { value: '200+', label: 'Teams building' },
+  { value: 'Live', label: 'API on Railway' },
 ]
 
 export default function Hero({ onCTA }) {
@@ -75,7 +75,7 @@ export default function Hero({ onCTA }) {
           transition={{ duration: 0.55, delay: 0.75 }}
         >
           <button className="btn-big" onClick={onCTA}>Get your API key →</button>
-          <button className="btn-outline" onClick={onCTA}>View docs</button>
+          <a className="btn-outline" href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">View docs →</a>
         </motion.div>
 
         {/* Trust note */}

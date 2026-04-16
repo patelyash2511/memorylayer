@@ -1,0 +1,83 @@
+.section { padding: 100px 48px; border-top: 1px solid var(--border); }
+.inner { max-width: 1140px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 48px; }
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.dotWrap { display: flex; align-items: center; gap: 7px; }
+.statusDot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #555;
+  transition: background 0.3s;
+}
+.statusDot[data-status="up"] {
+  background: #00e5b4;
+  box-shadow: 0 0 0 3px rgba(0,229,180,0.25);
+  animation: pulse 2s infinite;
+}
+.statusDot[data-status="down"] { background: #ff6b6b; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(0,229,180,0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(0,229,180,0.08); }
+}
+.statusLabel { font-size: 13px; color: var(--muted2); font-family: 'DM Mono', monospace; }
+
+.badge {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px 13px;
+  font-size: 12px;
+  color: var(--muted2);
+  font-family: 'DM Mono', monospace;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.card {
+  background: var(--accent-bg, var(--surface));
+  border: 1px solid var(--accent-bd, var(--border));
+  border-radius: 20px;
+  padding: 32px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.card:hover {
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+}
+
+.icon { font-size: 28px; }
+.cardTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+}
+.cardDesc { font-size: 14px; color: var(--muted2); line-height: 1.7; flex: 1; }
+.cardCta {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent2);
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .section { padding: 70px 24px; }
+  .grid { grid-template-columns: 1fr; }
+}
