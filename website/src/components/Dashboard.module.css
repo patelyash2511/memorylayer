@@ -16,7 +16,7 @@
   top: -120px; left: 50%;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-accent) 0%, transparent 70%);
   filter: blur(48px);
   animation: floatOrb 10s ease-in-out infinite alternate;
   pointer-events: none;
@@ -27,7 +27,7 @@
   width: 420px; height: 420px;
   bottom: 8%; right: -60px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,229,180,0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-accent2) 0%, transparent 70%);
   filter: blur(60px);
   animation: floatOrb 14s ease-in-out infinite alternate-reverse;
   pointer-events: none;
@@ -48,7 +48,7 @@
   border: 1px solid var(--border2);
   border-radius: 20px;
   padding: 40px 36px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 48px rgba(124,92,252,0.06);
+  box-shadow: 0 24px 64px var(--shadow), 0 0 48px var(--accent-alpha-8);
   margin-top: 40px;
 }
 
@@ -118,12 +118,12 @@
 /* ── Error ───────────────────────────────────────────── */
 
 .error {
-  background: rgba(255,107,107,0.08);
-  border: 1px solid rgba(255,107,107,0.2);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 13.5px;
-  color: #ff8a8a;
+  color: var(--error-text);
   line-height: 1.55;
 }
 
@@ -174,8 +174,8 @@
   font-size: 15px;
   font-weight: 600;
   font-family: 'Inter', sans-serif;
-  color: #000;
-  background: linear-gradient(135deg, #00e5b4 0%, #00c99d 100%);
+  color: var(--btn-text);
+  background: linear-gradient(135deg, var(--accent2) 0%, #00c99d 100%);
   border: none;
   border-radius: 100px;
   cursor: pointer;
@@ -201,8 +201,8 @@
 .spinner {
   display: inline-block;
   width: 16px; height: 16px;
-  border: 2px solid rgba(0,0,0,0.15);
-  border-top-color: #000;
+  border: 2px solid var(--border);
+  border-top-color: var(--btn-text);
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
 }
@@ -269,7 +269,7 @@
 
 .progressTrack {
   height: 5px;
-  background: rgba(255,255,255,0.06);
+  background: var(--white-alpha-6);
   border-radius: 100px;
   margin-top: 6px;
   overflow: hidden;
@@ -283,7 +283,7 @@
 }
 
 .progressFill[data-warning="true"] {
-  background: linear-gradient(90deg, #ff8a8a 0%, #ff6b6b 100%);
+  background: linear-gradient(90deg, var(--error-text) 0%, var(--error) 100%);
 }
 
 /* ── Sections ────────────────────────────────────────── */
@@ -456,9 +456,9 @@
 .revokeBtn {
   font-size: 12px;
   font-family: 'Inter', sans-serif;
-  color: #ff8a8a;
-  background: rgba(255,107,107,0.06);
-  border: 1px solid rgba(255,107,107,0.15);
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 6px;
   padding: 4px 10px;
   cursor: pointer;
@@ -525,7 +525,7 @@
   transition: color 0.2s;
 }
 
-.logoutBtn:hover { color: #ff8a8a; }
+.logoutBtn:hover { color: var(--error-text); }
 
 /* ── Responsive ──────────────────────────────────────── */
 

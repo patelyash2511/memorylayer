@@ -1,6 +1,6 @@
 .overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.75);
+  background: var(--overlay);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 2000;
@@ -8,12 +8,12 @@
   padding: 24px;
 }
 .modal {
-  background: #0e0e1a;
-  border: 1px solid rgba(200,210,255,0.1);
+  background: var(--modal-bg);
+  border: 1px solid var(--border2);
   border-radius: 22px;
   padding: 40px;
   max-width: 440px; width: 100%;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(124,92,252,0.1);
+  box-shadow: 0 32px 80px var(--shadow-lg), 0 0 0 1px var(--accent-alpha-10);
 }
 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
 .title {
@@ -22,16 +22,16 @@
 }
 .sub { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 320px; }
 .close {
-  background: none; border: none; color: #444;
+  background: none; border: none; color: var(--muted);
   font-size: 24px; cursor: pointer; line-height: 1;
   transition: color 0.2s; margin-top: -4px; margin-left: 12px; flex-shrink: 0;
 }
-.close:hover { color: #888; }
+.close:hover { color: var(--muted2); }
 
 .form { display: flex; flex-direction: column; gap: 14px; }
 .input {
-  background: #131320;
-  border: 1px solid rgba(200,210,255,0.09);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 13px 16px;
   font-size: 14px;
@@ -40,14 +40,14 @@
   transition: border-color 0.2s, box-shadow 0.2s;
   font-family: 'DM Sans', sans-serif;
 }
-.input::placeholder { color: #444; }
+.input::placeholder { color: var(--muted); }
 .input:focus {
   border-color: rgba(124,92,252,0.5);
   box-shadow: 0 0 0 3px rgba(124,92,252,0.1);
 }
 .submit {
-  background: linear-gradient(135deg, #00e5b4 0%, #00c99d 100%);
-  color: #000; border: none; border-radius: 100px;
+  background: linear-gradient(135deg, var(--accent2) 0%, #00c99d 100%);
+  color: var(--btn-text); border: none; border-radius: 100px;
   padding: 14px; font-size: 14px; font-weight: 500;
   cursor: pointer; transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
   margin-top: 4px; font-family: 'DM Sans', sans-serif;

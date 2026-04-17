@@ -49,8 +49,8 @@
 }
 .socials a:hover {
   color: var(--white);
-  border-color: rgba(255,255,255,0.25);
-  background: rgba(255,255,255,0.04);
+  border-color: var(--border2);
+  background: var(--white-alpha-4);
 }
 
 @media (max-width: 900px) {

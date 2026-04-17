@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import useLenis from './hooks/useLenis'
 import Nav from './components/Nav'
@@ -15,18 +15,24 @@ import Signup from './components/Signup'
 import Dashboard from './components/Dashboard'
 import './App.css'
 
+function getInitialTheme() {
+  const stored = localStorage.getItem('theme')
+  if (stored === 'light' || stored === 'dark') return stored
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
 function BetaBanner() {
   return (
     <div style={{
-      background: 'rgba(0,229,180,0.08)',
-      borderBottom: '1px solid rgba(0,229,180,0.18)',
+      background: 'var(--accent2-alpha-8)',
+      borderBottom: '1px solid var(--accent2-alpha-20)',
       padding: '10px 24px',
       textAlign: 'center',
       fontSize: '13px',
       color: 'var(--muted2)',
       lineHeight: 1.5,
     }}>
-      <span style={{ color: '#00e5b4', fontWeight: 600 }}>Open Beta</span>
+      <span style={{ color: 'var(--accent2)', fontWeight: 600 }}>Open Beta</span>
       {' '}&mdash; API is live, SDK published on PyPI, 39/39 tests passing.{' '}
       Sign up now and start building with persistent AI memory.
     </div>
@@ -53,9 +59,20 @@ export default function App() {
   const goSignup = useCallback(() => navigate('/signup'), [navigate])
   useLenis()
 
+  const [theme, setTheme] = useState(getInitialTheme)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark')
+  }, [])
+
   return (
     <>
-      <Nav onCTA={goSignup} />
+      <Nav onCTA={goSignup} theme={theme} onToggleTheme={toggleTheme} />
       <BetaBanner />
       <Routes>
         <Route path="/" element={<LandingPage onCTA={goSignup} />} />

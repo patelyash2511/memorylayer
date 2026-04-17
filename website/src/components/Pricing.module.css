@@ -1,7 +1,7 @@
 /* ─── Section ─────────────────────────────────────────────── */
 .section {
   padding: 100px 48px;
-  background: #07070f;
+  background: var(--section-alt2);
   border-top: 1px solid var(--border);
 }
 .inner { max-width: 1200px; margin: 0 auto; }
@@ -66,17 +66,17 @@
   transition: box-shadow 0.3s, border-color 0.3s;
 }
 .card:hover {
-  box-shadow: 0 16px 40px rgba(0,0,0,0.45);
-  border-color: rgba(200,210,255,0.1);
+  box-shadow: 0 16px 40px var(--shadow);
+  border-color: var(--border2);
 }
 .featured {
   background: linear-gradient(var(--surface2), var(--surface2)) padding-box,
     linear-gradient(145deg, rgba(124,92,252,0.7) 0%, rgba(0,229,180,0.4) 100%) border-box;
   border: 1px solid transparent;
-  box-shadow: 0 0 40px rgba(124,92,252,0.1);
+  box-shadow: 0 0 40px var(--accent-alpha-10);
 }
 .featured:hover {
-  box-shadow: 0 20px 56px rgba(0,0,0,0.5), 0 0 40px rgba(124,92,252,0.18);
+  box-shadow: 0 20px 56px var(--shadow), 0 0 40px var(--accent-alpha-15);
 }
 
 .badge {
@@ -159,9 +159,9 @@
   border: 1px solid var(--border2);
 }
 .btnDefault:hover {
-  border-color: rgba(255,255,255,0.2);
+  border-color: var(--border2);
   color: var(--white);
-  background: rgba(255,255,255,0.03);
+  background: var(--white-alpha-4);
 }
 .btnAccent {
   background: linear-gradient(135deg, var(--accent) 0%, #9b7bfc 100%);
@@ -206,7 +206,7 @@
   position: absolute;
   top: -11px; right: 16px;
   background: linear-gradient(135deg, var(--accent2), #00c99d);
-  color: #000;
+  color: var(--btn-text);
   font-size: 9px;
   font-family: 'DM Mono', monospace;
   letter-spacing: 1px;
@@ -266,8 +266,8 @@
 
 /* ─── Enterprise bar ──────────────────────────────────────── */
 .enterprise {
-  background: linear-gradient(135deg, rgba(124,92,252,0.08) 0%, rgba(0,229,180,0.04) 100%);
-  border: 1px solid rgba(124,92,252,0.2);
+  background: linear-gradient(135deg, var(--accent-alpha-8) 0%, var(--glow-accent2) 100%);
+  border: 1px solid var(--accent-alpha-20);
   border-radius: 20px;
   padding: 32px 40px;
   display: flex;

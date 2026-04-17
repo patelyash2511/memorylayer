@@ -30,7 +30,7 @@
 .statusLabel { font-size: 13px; color: var(--muted2); font-family: 'DM Mono', monospace; }
 
 .badge {
-  background: rgba(255,255,255,0.05);
+  background: var(--white-alpha-5);
   border: 1px solid var(--border);
   border-radius: 100px;
   padding: 4px 13px;
@@ -58,7 +58,7 @@
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 .card:hover {
-  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  box-shadow: 0 16px 48px var(--shadow);
 }
 
 .icon { font-size: 28px; }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import ThemeToggle from './ThemeToggle'
 import styles from './Nav.module.css'
 
 const links = [
@@ -10,7 +11,7 @@ const links = [
   { label: 'Docs', href: 'https://memorylayer-production.up.railway.app/docs', external: true },
 ]
 
-export default function Nav({ onCTA }) {
+export default function Nav({ onCTA, theme, onToggleTheme }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -42,6 +43,7 @@ export default function Nav({ onCTA }) {
         </ul>
 
         <div className={styles.cta}>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           <button className={styles.ghost} onClick={onCTA}>Sign in</button>
           <button className={styles.pill} onClick={onCTA}>Start free →</button>
           <button
