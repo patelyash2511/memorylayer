@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Yash Patel / rec0.ai
+# Licensed under MIT License
+# https://github.com/patelyash2511/rec0/blob/main/LICENSE
+
 """Integration tests — run against the live rec0 API.
 
 Skipped entirely when REC0_API_KEY is not set in the environment.

@@ -174,8 +174,11 @@ rec0/
 
 ## License
 
-MIT © 2026 rec0.ai — Built by Yash
+MIT © 2026 Yash Patel. See [LICENSE](LICENSE) for full terms.
 
 ---
+
+© 2026 Yash Patel. rec0 is a trademark of Yash Patel.
+Built by one person. Powered by obsession.
 
 *rec0 — remember everything, forget nothing*

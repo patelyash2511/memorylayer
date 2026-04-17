@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Yash Patel / rec0.ai
+# Licensed under MIT License
+# https://github.com/patelyash2511/rec0/blob/main/LICENSE
+
 """Summary generation for rec0.
 
 Pure-Python extractive summariser — fast, deterministic, and 100% private.

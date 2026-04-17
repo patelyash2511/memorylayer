@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Yash Patel / rec0.ai
+# Licensed under MIT License
+# https://github.com/patelyash2511/rec0/blob/main/LICENSE
+
 from rec0.models import Memory
 from rec0.schemas import MemoryCreate, MemoryResponse, MemoryQuery
 from rec0.database import Base, get_db
