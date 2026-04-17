@@ -12,6 +12,7 @@ import BuiltInPublic from './components/BuiltInPublic'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Signup from './components/Signup'
+import Dashboard from './components/Dashboard'
 import './App.css'
 
 function BetaBanner() {
@@ -59,6 +60,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage onCTA={goSignup} />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
       <Footer />
     </>
