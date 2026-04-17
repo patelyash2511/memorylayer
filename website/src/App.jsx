@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
 import useLenis from './hooks/useLenis'
 import Nav from './components/Nav'
 import Hero from './components/Hero'
@@ -10,7 +11,7 @@ import Pricing from './components/Pricing'
 import BuiltInPublic from './components/BuiltInPublic'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
-import Modal from './components/Modal'
+import Signup from './components/Signup'
 import './App.css'
 
 function BetaBanner() {
@@ -25,32 +26,41 @@ function BetaBanner() {
       lineHeight: 1.5,
     }}>
       <span style={{ color: '#00e5b4', fontWeight: 600 }}>Open Beta</span>
-      {' '}&mdash; API is live, SDK published on PyPI, 28/28 tests passing.{' '}
-      Join the waitlist for early access and help shape the product.
+      {' '}&mdash; API is live, SDK published on PyPI, 39/39 tests passing.{' '}
+      Sign up now and start building with persistent AI memory.
     </div>
   )
 }
 
+function LandingPage({ onCTA }) {
+  return (
+    <main>
+      <Hero onCTA={onCTA} />
+      <CodeSection />
+      <Features />
+      <UseCases />
+      <Compare />
+      <Pricing onCTA={onCTA} />
+      <BuiltInPublic />
+      <CTA onCTA={onCTA} />
+    </main>
+  )
+}
+
 export default function App() {
-  const [modalOpen, setModalOpen] = useState(false)
+  const navigate = useNavigate()
+  const goSignup = useCallback(() => navigate('/signup'), [navigate])
   useLenis()
 
   return (
     <>
-      <Nav onCTA={() => setModalOpen(true)} />
+      <Nav onCTA={goSignup} />
       <BetaBanner />
-      <main>
-        <Hero onCTA={() => setModalOpen(true)} />
-        <CodeSection />
-        <Features />
-        <UseCases />
-        <Compare />
-        <Pricing onCTA={() => setModalOpen(true)} />
-        <BuiltInPublic />
-        <CTA onCTA={() => setModalOpen(true)} />
-      </main>
+      <Routes>
+        <Route path="/" element={<LandingPage onCTA={goSignup} />} />
+        <Route path="/signup" element={<Signup />} />
+      </Routes>
       <Footer />
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   )
 }

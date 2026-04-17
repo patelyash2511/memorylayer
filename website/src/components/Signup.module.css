@@ -1,0 +1,403 @@
+/* ── Page layout ─────────────────────────────────────── */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient orbs (match Hero) */
+.orb1 {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 92, 252, 0.16) 0%, transparent 70%);
+  filter: blur(48px);
+  animation: floatOrb 10s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.orb2 {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  bottom: 8%;
+  right: -60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 229, 180, 0.09) 0%, transparent 70%);
+  filter: blur(60px);
+  animation: floatOrb 14s ease-in-out infinite alternate-reverse;
+  pointer-events: none;
+}
+
+@keyframes floatOrb {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(20px, 30px) scale(1.06);
+  }
+}
+
+/* ── Card ────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 40px 36px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 48px rgba(124, 92, 252, 0.06);
+}
+
+@media (max-width: 540px) {
+  .card {
+    padding: 32px 20px;
+    border-radius: 16px;
+  }
+}
+
+/* ── Typography ──────────────────────────────────────── */
+
+.heading {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 10px;
+  color: var(--white);
+  text-align: center;
+}
+
+.sub {
+  font-size: 15px;
+  color: var(--muted2);
+  line-height: 1.65;
+  font-weight: 300;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* ── Error banner ────────────────────────────────────── */
+
+.error {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  color: #ff8a8a;
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+
+/* ── Form ────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.label {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: var(--muted2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  color: var(--white);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input::placeholder {
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.input:focus {
+  border-color: rgba(124, 92, 252, 0.5);
+  box-shadow: 0 0 0 3px rgba(124, 92, 252, 0.12);
+}
+
+/* ── Checkbox ────────────────────────────────────────── */
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted2);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.checkbox input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  top: 1px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.checkbox input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkbox input[type='checkbox']:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.checkbox a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.checkbox a:hover {
+  color: var(--accent2);
+}
+
+/* ── Submit button ───────────────────────────────────── */
+
+.submit {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #000;
+  background: linear-gradient(135deg, #00e5b4 0%, #00c99d 100%);
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0, 229, 180, 0.35);
+}
+
+.submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Loading spinner ─────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Sign-in link ────────────────────────────────────── */
+
+.signinLink {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.signinLink a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.signinLink a:hover {
+  color: var(--accent2);
+}
+
+/* ── Success state: Key block ────────────────────────── */
+
+.keyBlock {
+  background: var(--code-bg);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.keyText {
+  font-family: 'DM Mono', 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  color: var(--accent2);
+  word-break: break-all;
+  user-select: all;
+  line-height: 1.5;
+}
+
+/* ── Copy button ─────────────────────────────────────── */
+
+.copyBtn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.3px;
+  color: var(--white);
+  background: rgba(124, 92, 252, 0.15);
+  border: 1px solid rgba(124, 92, 252, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.copyBtn:hover {
+  background: rgba(124, 92, 252, 0.25);
+  border-color: rgba(124, 92, 252, 0.5);
+}
+
+/* ── Warning banner ──────────────────────────────────── */
+
+.warning {
+  background: rgba(255, 107, 107, 0.07);
+  border: 1px solid rgba(255, 107, 107, 0.18);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #ff8a8a;
+  line-height: 1.55;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.warningIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+/* ── Code snippet ────────────────────────────────────── */
+
+.snippetWrap {
+  background: var(--code-bg);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.snippetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.snippetLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.snippet {
+  padding: 16px 18px;
+  margin: 0;
+  overflow-x: auto;
+  font-family: 'DM Mono', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted2);
+  user-select: all;
+}
+
+.snippet code {
+  font-family: inherit;
+}
+
+/* ── Bottom actions ──────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primaryBtn {
+  flex: 1;
+  text-align: center;
+  display: inline-block;
+  min-width: 0;
+}
+
+.secondaryBtn {
+  flex: 1;
+  text-align: center;
+  display: inline-block;
+  min-width: 0;
+}
+
+@media (max-width: 400px) {
+  .actions {
+    flex-direction: column;
+  }
+}
