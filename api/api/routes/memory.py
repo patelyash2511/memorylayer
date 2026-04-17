@@ -9,7 +9,6 @@ Endpoints:
   POST /memory/recall      — semantic recall with importance boost
   GET  /memory/list        — list all active memories for a user
   DELETE /memory/{id}      — soft-delete a memory (GDPR-friendly)
-  POST /auth/keygen        — generate a new r0_ API key with bcrypt hash
 """
 
 from __future__ import annotations
@@ -17,18 +16,18 @@ from __future__ import annotations
 import json
 import logging
 import os
-import secrets
 import time
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from rec0.database import get_db
 from rec0.embeddings import compute_similarity, embed
-from rec0.models import Memory
+from rec0.keygen import check_api_key
+from rec0.models import Account, ApiKey, Memory, UsageLog
 from rec0.ratelimit import check_rate_limit
 from rec0.schemas import (
     MemoryCreate,
@@ -43,6 +42,8 @@ from rec0.summaries import generate_summary
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_DEV_KEY = "r0_dev_key_2026"
 
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
@@ -70,33 +71,89 @@ def _rate_limit_error(retry_after: int) -> HTTPException:
     )
 
 
-def verify_api_key(x_api_key: Optional[str] = Header(default=None)) -> str:
+def verify_api_key(
+    request: Request,
+    x_api_key: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+) -> str:
     """Verify the X-API-Key header.
 
-    Supports bcrypt hash validation (SECRET_KEY_HASH env var — recommended for
-    production) and plaintext fallback (SECRET_KEY env var — backward compat).
-    Returns the key on success for downstream rate limiting.
+    Priority order:
+      1. In production: reject the hardcoded dev key.
+      2. Dev key (non-production only): allowed without DB lookup.
+      3. Plaintext SECRET_KEY env var (for tests / backward compat).
+      4. Bcrypt SECRET_KEY_HASH env var (old single-key production mode).
+      5. Full DB lookup with bcrypt verification (new multi-tenant mode).
+
+    Sets request.state.account and request.state.key_prefix when a real
+    account is found so that _track_op can increment ops_used.
     """
     if not x_api_key:
         raise _auth_error()
 
-    # Preferred: bcrypt hash validation
-    key_hash = os.environ.get("SECRET_KEY_HASH", "")
-    if key_hash:
-        try:
-            import bcrypt
-            if not bcrypt.checkpw(x_api_key.encode(), key_hash.encode()):
-                raise _auth_error()
-            return x_api_key
-        except ImportError:
-            logger.error("bcrypt not installed but SECRET_KEY_HASH is set")
-            raise _auth_error()
+    env = os.environ.get("REC0_ENV", "development")
 
-    # Fallback: plaintext comparison
+    # Production: reject dev key with a helpful message
+    if env == "production" and x_api_key == _DEV_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "invalid_api_key",
+                "message": "Register at rec0.ai to get your free API key.",
+                "docs": "https://docs.rec0.ai/quickstart",
+            },
+        )
+
+    # Dev key in non-production
+    if env != "production" and x_api_key == _DEV_KEY:
+        return x_api_key
+
+    # Legacy: plaintext SECRET_KEY (tests, backward compat)
     secret = os.environ.get("SECRET_KEY", "")
-    if not secret or x_api_key != secret:
+    if secret and x_api_key == secret:
+        logger.warning("Using plaintext SECRET_KEY. Register at rec0.ai for production keys.")
+        return x_api_key
+
+    # Legacy: bcrypt SECRET_KEY_HASH (old single-key mode)
+    key_hash_env = os.environ.get("SECRET_KEY_HASH", "")
+    if key_hash_env:
+        try:
+            import bcrypt as _bcrypt
+            if _bcrypt.checkpw(x_api_key.encode(), key_hash_env.encode()):
+                return x_api_key
+        except Exception:
+            pass
         raise _auth_error()
-    logger.warning("Using plaintext SECRET_KEY. Set SECRET_KEY_HASH for production security.")
+
+    # DB-backed multi-tenant lookup
+    prefix = x_api_key[:20] + "..." if len(x_api_key) >= 20 else x_api_key
+    candidates = (
+        db.query(ApiKey)
+        .filter(ApiKey.key_prefix == prefix, ApiKey.is_active.is_(True))
+        .all()
+    )
+
+    matched: Optional[ApiKey] = None
+    for candidate in candidates:
+        if check_api_key(x_api_key, candidate.key_hash):
+            matched = candidate
+            break
+
+    if not matched:
+        raise _auth_error()
+
+    account = db.query(Account).filter(Account.id == matched.account_id).first()
+    if not account:
+        raise _auth_error()
+
+    # Update last_used_at (flushed; committed with the endpoint's db.commit)
+    matched.last_used_at = datetime.now(timezone.utc)
+    db.flush()
+
+    # Attach account to request state for _track_op
+    request.state.account = account
+    request.state.key_prefix = prefix
+
     return x_api_key
 
 
@@ -105,6 +162,42 @@ def _check_rate(api_key: str) -> None:
     allowed, retry_after = check_rate_limit(api_key)
     if not allowed:
         raise _rate_limit_error(retry_after)
+
+
+def _track_op(request: Request, db: Session) -> None:
+    """Increment ops_used and write a usage log for DB-authenticated requests.
+
+    Only counts /memory/store and /memory/recall as ops (per FAQ).
+    No-ops for legacy/dev key users (no account attached).
+    Commits immediately so ops are recorded even on early returns.
+    """
+    account: Optional[Account] = getattr(request.state, "account", None)
+    if account is None:
+        return
+
+    if (account.ops_used or 0) >= (account.ops_limit or 10000):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "ops_limit_exceeded",
+                "message": (
+                    f"You have used all {account.ops_limit:,} ops this month. "
+                    "Upgrade or buy credits."
+                ),
+                "ops_used": account.ops_used,
+                "ops_limit": account.ops_limit,
+                "upgrade_url": "https://rec0.ai/#pricing",
+            },
+        )
+
+    account.ops_used = (account.ops_used or 0) + 1
+    log = UsageLog(
+        account_id=account.id,
+        key_prefix=getattr(request.state, "key_prefix", None),
+        endpoint=str(request.url.path),
+    )
+    db.add(log)
+    db.commit()  # commit immediately so ops are recorded even on early return
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -119,11 +212,13 @@ def _check_rate(api_key: str) -> None:
 )
 def store_memory(
     payload: MemoryCreate,
+    request: Request,
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> Memory:
     """Store a memory with auto-generated embedding and summary."""
     _check_rate(api_key)
+    _track_op(request, db)
 
     emb = embed(payload.content)
     emb_json = json.dumps(emb) if emb is not None else None
@@ -152,11 +247,13 @@ def store_memory(
 )
 def recall_memories(
     payload: MemoryQuery,
+    request: Request,
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> RecallListResponse:
     """Semantic recall using fastembed ONNX local model (BAAI/bge-small-en-v1.5). No external APIs."""
     _check_rate(api_key)
+    _track_op(request, db)
     t_start = time.monotonic()
 
     memories = (
@@ -296,39 +393,3 @@ def delete_memory(
     db.commit()
     logger.info("Memory soft-deleted: id=%s", memory_id)
 
-
-# ── Auth utility endpoint ──────────────────────────────────────────────────────
-
-
-@router.post(
-    "/auth/keygen",
-    summary="Generate a new API key",
-    description=(
-        "Generate a new r0_ API key and its bcrypt hash. "
-        "Store the hash as SECRET_KEY_HASH in Railway env vars."
-    ),
-)
-def generate_key(api_key: str = Depends(verify_api_key)) -> dict:
-    """Generate a new r0_ API key with its bcrypt hash for production use."""
-    try:
-        import bcrypt
-    except ImportError:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "bcrypt_unavailable",
-                "message": "Install bcrypt to use keygen",
-                "docs": "https://docs.rec0.ai/errors",
-            },
-        )
-    new_key = "r0_" + secrets.token_urlsafe(32)
-    key_hash = bcrypt.hashpw(new_key.encode(), bcrypt.gensalt()).decode()
-    return {
-        "api_key": new_key,
-        "secret_key_hash": key_hash,
-        "instructions": (
-            "Set SECRET_KEY_HASH=<secret_key_hash> in Railway env vars. "
-            "Use api_key in your X-API-Key header."
-        ),
-        "rec0_version": "1.0.0",
-    }

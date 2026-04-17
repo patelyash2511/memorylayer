@@ -83,3 +83,67 @@ class UserDeleteResponse(BaseModel):
     deleted: bool
     memories_removed: int
     rec0_version: str = REC0_VERSION
+
+
+# ── Auth schemas ───────────────────────────────────────────────────────────────
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+
+    @field_validator("email")
+    @classmethod
+    def email_not_empty(cls, v: str) -> str:
+        if not v or "@" not in v:
+            raise ValueError("A valid email address is required")
+        return v.lower().strip()
+
+
+class RegisterResponse(BaseModel):
+    account_id: str
+    email: str
+    plan: str
+    api_key: str
+    key_prefix: str
+    warning: str = "Save this key now. We cannot show it again."
+    docs: str = "https://docs.rec0.ai/quickstart"
+
+
+class KeyCreateRequest(BaseModel):
+    name: str = "Default key"
+    mode: str = "live"
+
+
+class KeyCreateResponse(BaseModel):
+    api_key: str
+    key_prefix: str
+    name: str
+    warning: str = "Save this key now. We cannot show it again."
+
+
+class KeyInfo(BaseModel):
+    key_prefix: str
+    name: str
+    last_used_at: Optional[datetime]
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class KeyListResponse(BaseModel):
+    keys: List[KeyInfo]
+    total: int
+
+
+class AccountMeResponse(BaseModel):
+    account_id: str
+    email: str
+    plan: str
+    ops_used_this_month: int
+    ops_limit: int
+    credits: int
+    keys_count: int
+    member_since: str
+

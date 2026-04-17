@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 
 from api.routes.memory import router as memory_router
 from api.routes.users import router as users_router
+from api.routes.auth import router as auth_router
 from rec0.database import Base, SessionLocal, engine
 import rec0.models  # noqa: F401 — registers all models with Base
 
@@ -138,6 +139,7 @@ app = FastAPI(
 
 app.include_router(memory_router, prefix="/v1")
 app.include_router(users_router, prefix="/v1")
+app.include_router(auth_router, prefix="/v1")
 
 
 # ── Global error handlers ──────────────────────────────────────────────────────

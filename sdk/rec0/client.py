@@ -234,3 +234,12 @@ class Memory:
             return True
         except Exception:
             return False
+
+    def whoami(self) -> dict:
+        """Return account info for this API key.
+
+        Returns account ID, email, plan, ops usage, and key count.
+        Requires a registered API key (not the dev key).
+        """
+        resp = self._get("/v1/auth/me")
+        return resp.json()
