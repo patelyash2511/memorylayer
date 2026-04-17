@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.routes.memory import router as memory_router
@@ -135,6 +136,21 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://rec0.vercel.app",
+        "https://rec0.ai",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+    expose_headers=["X-Ops-Used", "X-Ops-Limit"],
 )
 
 app.include_router(memory_router, prefix="/v1")
