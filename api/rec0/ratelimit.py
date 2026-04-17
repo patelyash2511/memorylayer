@@ -44,3 +44,9 @@ def check_rate_limit(key: str, limit: int = FREE_TIER_LIMIT) -> Tuple[bool, int]
 
         _requests[key].append(now)
         return True, 0
+
+
+def reset_rate_limiter() -> None:
+    """Clear all rate-limit state. For use in tests only."""
+    with _lock:
+        _requests.clear()

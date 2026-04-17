@@ -28,6 +28,7 @@ from sqlalchemy.pool import StaticPool
 
 from rec0.database import Base, get_db
 from rec0.models import Account, ApiKey, Memory, UsageLog  # noqa: F401 — register all tables
+from rec0.ratelimit import reset_rate_limiter
 from api.main import app
 
 
@@ -54,6 +55,7 @@ def db_session():
 @pytest.fixture()
 def client(db_session, monkeypatch):
     """TestClient with in-memory DB and no legacy keys set."""
+    reset_rate_limiter()
     monkeypatch.delenv("SECRET_KEY", raising=False)
     monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
     monkeypatch.setenv("REC0_ENV", "development")
@@ -73,6 +75,7 @@ def client(db_session, monkeypatch):
 @pytest.fixture()
 def prod_client(db_session, monkeypatch):
     """TestClient simulating production environment."""
+    reset_rate_limiter()
     monkeypatch.delenv("SECRET_KEY", raising=False)
     monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
     monkeypatch.setenv("REC0_ENV", "production")
