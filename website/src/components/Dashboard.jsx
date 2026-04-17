@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import styles from './Dashboard.module.css'
 
 const API = 'https://memorylayer-production.up.railway.app/v1'
@@ -23,11 +23,19 @@ function CopyBtn({ text, label = 'Copy' }) {
 
 /* ── main dashboard ────────────────────────────────────── */
 export default function Dashboard() {
-  const [apiKey, setApiKey] = useState('')
+  const location = useLocation()
+  const [apiKey, setApiKey] = useState(location.state?.apiKey || '')
   const [account, setAccount] = useState(null)
   const [keys, setKeys] = useState([])
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  // auto-login when arriving from signup with key in state
+  useEffect(() => {
+    if (location.state?.apiKey && !account) {
+      loadDashboard(location.state.apiKey)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // new-key form state
   const [showCreate, setShowCreate] = useState(false)
@@ -41,14 +49,16 @@ export default function Dashboard() {
   const headers = { 'Content-Type': 'application/json', 'X-API-Key': apiKey }
 
   /* ── fetch account + keys ─────────────────────────────── */
-  async function loadDashboard() {
-    if (!apiKey.trim()) return
+  async function loadDashboard(keyOverride) {
+    const key = keyOverride || apiKey
+    if (!key.trim()) return
+    const hdrs = { 'Content-Type': 'application/json', 'X-API-Key': key }
     setError(null)
     setLoading(true)
     try {
       const [meResp, keysResp] = await Promise.all([
-        fetch(`${API}/auth/me`, { headers }),
-        fetch(`${API}/auth/keys`, { headers }),
+        fetch(`${API}/auth/me`, { headers: hdrs }),
+        fetch(`${API}/auth/keys`, { headers: hdrs }),
       ])
       if (!meResp.ok || !keysResp.ok) {
         if (meResp.status === 401 || keysResp.status === 401) {

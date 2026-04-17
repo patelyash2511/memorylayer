@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import styles from './Signup.module.css'
 
 const API_URL =
@@ -24,6 +24,7 @@ function CopyButton({ text, label = 'Copy' }) {
 }
 
 export default function Signup() {
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [agreed, setAgreed] = useState(false)
@@ -122,9 +123,12 @@ mem.store(user_id="user_123",
 
           {/* CTAs */}
           <div className={styles.actions}>
-            <Link to="/dashboard" className={`btn-big ${styles.primaryBtn}`}>
+            <button
+              className={`btn-big ${styles.primaryBtn}`}
+              onClick={() => navigate('/dashboard', { state: { apiKey: data.api_key } })}
+            >
               Go to dashboard →
-            </Link>
+            </button>
             <a
               className={`btn-outline ${styles.secondaryBtn}`}
               href="https://memorylayer-production.up.railway.app/docs"
