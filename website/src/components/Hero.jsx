@@ -85,7 +85,7 @@ export default function Hero({ onCTA }) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.95 }}
         >
-          Free up to 50K memories · No card required
+          Free forever up to 10K ops/mo · No card required
         </motion.p>
 
         {/* Stats strip */}

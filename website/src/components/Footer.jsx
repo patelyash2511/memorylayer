@@ -49,7 +49,10 @@ export default function Footer() {
         ))}
       </div>
       <div className={styles.bottom}>
-        <p>© 2026 Rec0 · Built by Yash · Open Beta · April 2026 · MIT License</p>
+        <div>
+          <p>© 2026 Rec0 · Built by Yash · Open Beta · April 2026 · MIT License</p>
+          <p style={{ marginTop: '6px' }}>Pricing designed to grow with you, not against you.</p>
+        </div>
         <div className={styles.socials}>
           <a href="https://github.com/patelyash2511/rec0" title="GitHub" target="_blank" rel="noopener noreferrer">⌥</a>
         </div>
