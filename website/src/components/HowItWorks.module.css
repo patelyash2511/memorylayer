@@ -1,0 +1,134 @@
+.section {
+  padding: 100px 48px;
+  border-top: 1px solid var(--border);
+}
+
+.inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+/* ── Steps stack ─────────────────────────────────────── */
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.card:hover {
+  border-color: var(--accent-alpha-20);
+  box-shadow: 0 16px 40px var(--shadow), 0 0 0 1px var(--accent-alpha-10);
+}
+
+/* ── Step number ─────────────────────────────────────── */
+
+.num {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  background: var(--accent-alpha-10);
+  border: 1px solid var(--accent-alpha-20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.card:hover .num {
+  background: var(--accent-alpha-20);
+  box-shadow: 0 0 20px var(--accent-alpha-15);
+}
+
+/* ── Content ─────────────────────────────────────────── */
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--white);
+  margin-bottom: 14px;
+}
+
+.code {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  font-family: 'DM Mono', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--muted2);
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.code code {
+  font-family: inherit;
+}
+
+.desc {
+  font-size: 16px;
+  color: var(--accent2);
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .section {
+    padding: 70px 24px;
+  }
+
+  .card {
+    padding: 24px 20px;
+    gap: 16px;
+  }
+
+  .num {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 15px;
+    border-radius: 10px;
+  }
+
+  .title {
+    font-size: 17px;
+  }
+
+  .code {
+    font-size: 12px;
+    padding: 12px 14px;
+  }
+}

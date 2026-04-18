@@ -5,6 +5,7 @@ import Nav from './components/Nav'
 import Hero from './components/Hero'
 import CodeSection from './components/CodeSection'
 import Features from './components/Features'
+import HowItWorks from './components/HowItWorks'
 import UseCases from './components/UseCases'
 import Compare from './components/Compare'
 import Pricing from './components/Pricing'
@@ -44,6 +45,7 @@ function LandingPage({ onCTA }) {
     <main>
       <Hero onCTA={onCTA} />
       <CodeSection />
+      <HowItWorks />
       <Features />
       <UseCases />
       <Compare />
