@@ -6,6 +6,7 @@ import Hero from './components/Hero'
 import CodeSection from './components/CodeSection'
 import Features from './components/Features'
 import HowItWorks from './components/HowItWorks'
+import LiveProof from './components/LiveProof'
 import UseCases from './components/UseCases'
 import Compare from './components/Compare'
 import Pricing from './components/Pricing'
@@ -46,6 +47,7 @@ function LandingPage({ onCTA }) {
       <Hero onCTA={onCTA} />
       <CodeSection />
       <HowItWorks />
+      <LiveProof />
       <Features />
       <UseCases />
       <Compare />

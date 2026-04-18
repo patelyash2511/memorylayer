@@ -1,0 +1,81 @@
+.section {
+  padding: 100px 48px;
+  border-top: 1px solid var(--border);
+}
+
+.inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--accent-alpha-20);
+  box-shadow: 0 16px 40px var(--shadow), 0 0 0 1px var(--accent-alpha-10);
+  transform: translateY(-3px);
+}
+
+.icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.metric {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--white);
+}
+
+.cta {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent2);
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+
+.card:hover .cta {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 70px 24px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 24px 20px;
+  }
+}
