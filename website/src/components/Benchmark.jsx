@@ -12,7 +12,6 @@ const REGIONS = [
 ]
 
 const BATCH_SIZE = 50
-const API_KEY = 'r0_dev_key_2026'
 const TIMEOUT_MS = 10_000
 
 const ENDPOINTS = {
@@ -46,6 +45,9 @@ function ts() {
 /* ── Component ───────────────────────────────────────── */
 
 export default function Benchmark() {
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [authError, setAuthError] = useState(false)
   const [region, setRegion] = useState('auto')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: TOTAL })
@@ -60,6 +62,7 @@ export default function Benchmark() {
 
     setRunning(true)
     setResults(null)
+    setAuthError(false)
     doneRef.current = 0
     setProgress({ done: 0, total: TOTAL })
     setElapsed(0)
@@ -94,7 +97,7 @@ export default function Benchmark() {
           method: req.method,
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': API_KEY,
+            'X-API-Key': apiKey,
           },
           body: req.body ? JSON.stringify(req.body) : undefined,
           signal: ctrl.signal,
@@ -103,6 +106,9 @@ export default function Benchmark() {
         const ms = performance.now() - t0
         if (resp.ok) {
           latencies[req.type].push(ms)
+        } else if (resp.status === 401) {
+          setAuthError(true)
+          errors.other++
         } else if (resp.status === 500) {
           errors.http500++
         } else if (resp.status === 429) {
@@ -169,7 +175,7 @@ export default function Benchmark() {
     })
     setElapsed(duration)
     setRunning(false)
-  }, [region])
+  }, [region, apiKey])
 
   return (
     <div className={styles.page}>
@@ -188,6 +194,38 @@ export default function Benchmark() {
           <h1 className={styles.heading}>rec0 API Benchmark</h1>
           <p className={styles.sub}>
             Production load testing with {TOTAL.toLocaleString()} concurrent requests
+          </p>
+        </div>
+
+        {/* API key input */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>API Key <span className={styles.required}>(required)</span></h2>
+          <div className={styles.keyInputWrap}>
+            <input
+              type={showKey ? 'text' : 'password'}
+              className={styles.keyInput}
+              placeholder="r0_live_sk_xxxxxxxxxxxxx"
+              value={apiKey}
+              onChange={e => { setApiKey(e.target.value); setAuthError(false) }}
+              disabled={running}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className={styles.toggleKey}
+              onClick={() => setShowKey(v => !v)}
+              tabIndex={-1}
+            >
+              {showKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {authError && (
+            <p className={styles.authError}>Invalid API key. Get one at <a href="/signup">rec0.ai/signup</a></p>
+          )}
+          <p className={styles.keyHint}>
+            This benchmark will use {TOTAL.toLocaleString()} ops from your account. Free tier includes 10,000 ops/month.{' '}
+            <a href="/signup" className={styles.keyLink}>Get your key at rec0.ai/signup &rarr;</a>
           </p>
         </div>
 
@@ -218,7 +256,7 @@ export default function Benchmark() {
         <button
           className={styles.runBtn}
           onClick={runBenchmark}
-          disabled={running}
+          disabled={!apiKey.trim() || running}
         >
           {running ? (
             <>

@@ -99,6 +99,95 @@
   margin-bottom: 14px;
 }
 
+.required {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0;
+}
+
+/* ── API key input ───────────────────────────────────── */
+
+.keyInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.keyInput {
+  width: 100%;
+  padding: 12px 70px 12px 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.keyInput::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.keyInput:focus {
+  border-color: var(--accent2);
+}
+
+.toggleKey {
+  position: absolute;
+  right: 10px;
+  padding: 4px 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  background: var(--white-alpha-6);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.toggleKey:hover {
+  color: var(--fg);
+  background: var(--white-alpha-10, rgba(255,255,255,0.08));
+}
+
+.authError {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #f87171;
+  font-family: 'DM Mono', monospace;
+}
+
+.authError a {
+  color: var(--accent2);
+  text-decoration: underline;
+}
+
+.keyHint {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.1px;
+}
+
+.keyLink {
+  color: var(--accent2);
+  text-decoration: none;
+}
+
+.keyLink:hover {
+  text-decoration: underline;
+}
+
 .regionList {
   display: flex;
   flex-direction: column;
