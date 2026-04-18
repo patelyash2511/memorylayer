@@ -57,6 +57,7 @@ function LandingPage({ onCTA }) {
 export default function App() {
   const navigate = useNavigate()
   const goSignup = useCallback(() => navigate('/signup'), [navigate])
+  const goSignin = useCallback(() => navigate('/dashboard'), [navigate])
   useLenis()
 
   const [theme, setTheme] = useState(getInitialTheme)
@@ -72,7 +73,7 @@ export default function App() {
 
   return (
     <>
-      <Nav onCTA={goSignup} theme={theme} onToggleTheme={toggleTheme} />
+      <Nav onCTA={goSignup} onSignin={goSignin} theme={theme} onToggleTheme={toggleTheme} />
       <BetaBanner />
       <Routes>
         <Route path="/" element={<LandingPage onCTA={goSignup} />} />

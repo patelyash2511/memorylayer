@@ -11,7 +11,7 @@ const links = [
   { label: 'Docs', href: 'https://memorylayer-production.up.railway.app/docs', external: true },
 ]
 
-export default function Nav({ onCTA, theme, onToggleTheme }) {
+export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -44,7 +44,7 @@ export default function Nav({ onCTA, theme, onToggleTheme }) {
 
         <div className={styles.cta}>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          <button className={styles.ghost} onClick={onCTA}>Sign in</button>
+          <button className={styles.ghost} onClick={onSignin}>Sign in</button>
           <button className={styles.pill} onClick={onCTA}>Start free →</button>
           <button
             className={styles.hamburger}
