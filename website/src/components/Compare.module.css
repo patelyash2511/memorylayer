@@ -1,5 +1,5 @@
 .section { padding: 80px 48px; border-top: 1px solid var(--border); }
-.inner { max-width: 680px; margin: 0 auto; }
+.inner { max-width: 880px; margin: 0 auto; }
 
 .prose {
   margin-top: 28px;
@@ -22,8 +22,102 @@
   letter-spacing: 0.5px;
 }
 
+/* ── Comparison table ────────────────────────────── */
+
+.tableTitle {
+  margin-top: 64px;
+  margin-bottom: 24px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--fg);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+  font-size: 15px;
+}
+
+.table thead th {
+  padding: 14px 18px;
+  text-align: left;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.rec0Col {
+  color: var(--accent) !important;
+}
+
+.table tbody td {
+  padding: 13px 18px;
+  color: var(--muted2);
+  font-weight: 300;
+  white-space: nowrap;
+}
+
+.featureCol,
+.featureCell {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.rowEven {
+  background: var(--accent-alpha-5, rgba(255,255,255,0.02));
+}
+
+.rec0Cell {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.highlight {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.check {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.cross {
+  color: var(--error);
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.footnote {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  line-height: 1.6;
+}
+
 @media (max-width: 600px) {
   .section { padding: 60px 24px; }
   .prose p { font-size: 16px; }
+  .tableTitle { font-size: 22px; margin-top: 48px; }
+  .table { font-size: 14px; }
+  .table thead th { padding: 12px 14px; font-size: 12px; }
+  .table tbody td { padding: 11px 14px; }
 }
 
