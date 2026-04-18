@@ -11,14 +11,14 @@ const REGIONS = [
   { id: 'ap',    label: 'Asia Pacific (Singapore)',     url: 'https://memorylayer-production.up.railway.app', available: false },
 ]
 
-const BATCH_SIZE = 10
+const BATCH_SIZE = 5
 const TIMEOUT_MS = 30_000
-const BATCH_DELAY_MS = 100
+const BATCH_DELAY_MS = 1000
 
 const ENDPOINTS = {
-  store:  { count: 400, method: 'POST', path: '/v1/memory/store',  body: { user_id: 'benchmark_user', app_id: 'benchmark', content: 'Benchmark test memory' } },
-  recall: { count: 400, method: 'POST', path: '/v1/memory/recall', body: { user_id: 'benchmark_user', app_id: 'benchmark', query: 'test' } },
-  health: { count: 200, method: 'GET',  path: '/health',           body: null },
+  store:  { count: 40, method: 'POST', path: '/v1/memory/store',  body: { user_id: 'benchmark_user', app_id: 'benchmark', content: 'Benchmark test memory' } },
+  recall: { count: 40, method: 'POST', path: '/v1/memory/recall', body: { user_id: 'benchmark_user', app_id: 'benchmark', query: 'test' } },
+  health: { count: 20, method: 'GET',  path: '/health',           body: null },
 }
 
 const TOTAL = Object.values(ENDPOINTS).reduce((s, e) => s + e.count, 0)
@@ -114,6 +114,7 @@ export default function Benchmark() {
           errors.http500++
         } else if (resp.status === 429) {
           errors.http429++
+          await new Promise(r => setTimeout(r, 5000))
         } else {
           errors.other++
         }
@@ -287,7 +288,8 @@ export default function Benchmark() {
 
         {/* Warning */}
         <p className={styles.warning}>
-          &#9888; This benchmark fires {TOTAL.toLocaleString()} real API calls to Railway and will count against your usage limits.
+          &#9888; This benchmark fires {TOTAL.toLocaleString()} real API calls and will take ~2-3 minutes.
+          It respects API rate limits and will count against your usage. For production load testing, use k6 or Apache Bench.
         </p>
 
         {/* Results */}
