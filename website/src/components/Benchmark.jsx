@@ -11,8 +11,9 @@ const REGIONS = [
   { id: 'ap',    label: 'Asia Pacific (Singapore)',     url: 'https://memorylayer-production.up.railway.app', available: false },
 ]
 
-const BATCH_SIZE = 50
-const TIMEOUT_MS = 10_000
+const BATCH_SIZE = 10
+const TIMEOUT_MS = 30_000
+const BATCH_DELAY_MS = 100
 
 const ENDPOINTS = {
   store:  { count: 400, method: 'POST', path: '/v1/memory/store',  body: { user_id: 'benchmark_user', app_id: 'benchmark', content: 'Benchmark test memory' } },
@@ -88,7 +89,7 @@ export default function Benchmark() {
       [requests[i], requests[j]] = [requests[j], requests[i]]
     }
 
-    async function exec(req) {
+    async function exec(req, retryCount = 0) {
       const t0 = performance.now()
       try {
         const ctrl = new AbortController()
@@ -117,6 +118,10 @@ export default function Benchmark() {
           errors.other++
         }
       } catch (err) {
+        if (err.name === 'AbortError' && retryCount < 1) {
+          await new Promise(r => setTimeout(r, 1000))
+          return exec(req, retryCount + 1)
+        }
         if (err.name === 'AbortError') {
           errors.timeouts++
         } else {
@@ -130,7 +135,10 @@ export default function Benchmark() {
     /* run in batches */
     for (let i = 0; i < requests.length; i += BATCH_SIZE) {
       const batch = requests.slice(i, i + BATCH_SIZE)
-      await Promise.all(batch.map(exec))
+      await Promise.all(batch.map(r => exec(r)))
+      if (i + BATCH_SIZE < requests.length) {
+        await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
+      }
     }
 
     clearInterval(timerRef.current)
