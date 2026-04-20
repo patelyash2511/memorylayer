@@ -137,14 +137,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://rec0.vercel.app",
-        "https://rec0.ai",
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://localhost:8080",
+        "https://rec0.ai",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Session-Token", "Authorization"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
     expose_headers=["X-Ops-Used", "X-Ops-Limit"],
 )
 
