@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import styles from './Benchmark.module.css'
 
 /* ── Static results from production test (April 21, 2026) ── */
@@ -128,7 +129,8 @@ export default function Benchmark() {
               <strong>Latency: 3&ndash;5s (optimizing)</strong>
               <p>
                 Current latency is higher than target because we run local embeddings on Railway&rsquo;s
-                free tier. Single-user requests are faster (~1&ndash;2s). See our optimization roadmap below.
+                free tier. Single-user requests are faster (~1&ndash;2s).{' '}
+                <Link to="/roadmap" className={styles.roadmapLink}>View optimization roadmap &rarr;</Link>
               </p>
             </div>
           </div>

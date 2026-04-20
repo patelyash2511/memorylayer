@@ -16,6 +16,7 @@ import Footer from './components/Footer'
 import Signup from './components/Signup'
 import Dashboard from './components/Dashboard'
 import Benchmark from './components/Benchmark'
+import Roadmap from './components/Roadmap'
 import './App.css'
 
 function getInitialTheme() {
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/benchmark" element={<Benchmark />} />
+        <Route path="/roadmap" element={<Roadmap />} />
       </Routes>
       <Footer />
     </>
