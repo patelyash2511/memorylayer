@@ -54,17 +54,35 @@ export default function Signup() {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined, password }),
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim() || undefined,
+          password,
+        }),
       })
 
       if (!response.ok) {
-        if (response.status === 409) {
-          setError('This email is already registered. Try signing in instead.')
-        } else if (response.status === 429) {
-          setError('Too many signups from your network. Try again in an hour.')
-        } else {
-          setError('Something went wrong. Please try again.')
+        let message = 'Something went wrong. Please try again.'
+
+        try {
+          const payload = await response.json()
+          if (response.status === 422 && payload?.message) {
+            if (payload.message.includes('password')) {
+              message = 'Use a password with at least 8 characters.'
+            } else {
+              message = 'Please check your details and try again.'
+            }
+          }
+        } catch {
+          // Ignore non-JSON error bodies and keep the fallback message.
         }
+
+        if (response.status === 409) {
+          message = 'This email is already registered. Try signing in instead.'
+        } else if (response.status === 429) {
+          message = 'Too many signups from your network. Try again in an hour.'
+        }
+        setError(message)
         setLoading(false)
         return
       }
