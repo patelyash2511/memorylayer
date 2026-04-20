@@ -91,6 +91,7 @@ class UserDeleteResponse(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     name: Optional[str] = None
+    password: str
 
     @field_validator("email")
     @classmethod
@@ -99,6 +100,13 @@ class RegisterRequest(BaseModel):
             raise ValueError("A valid email address is required")
         return v.lower().strip()
 
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
 
 class RegisterResponse(BaseModel):
     account_id: str
@@ -106,6 +114,7 @@ class RegisterResponse(BaseModel):
     plan: str
     api_key: str
     key_prefix: str
+    session_token: str
     warning: str = "Save this key now. We cannot show it again."
     docs: str = "https://docs.rec0.ai/quickstart"
 
@@ -146,4 +155,26 @@ class AccountMeResponse(BaseModel):
     credits: int
     keys_count: int
     member_since: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def email_not_empty(cls, v: str) -> str:
+        if not v or "@" not in v:
+            raise ValueError("A valid email address is required")
+        return v.lower().strip()
+
+
+class LoginResponse(BaseModel):
+    account_id: str
+    email: str
+    session_token: str
+
+
+class LogoutResponse(BaseModel):
+    logged_out: bool
 

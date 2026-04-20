@@ -27,7 +27,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from rec0.database import Base, get_db
-from rec0.models import Account, ApiKey, Memory, UsageLog  # noqa: F401 — register all tables
+from rec0.models import Account, ApiKey, AuthSession, Memory, UsageLog  # noqa: F401 — register all tables
 from rec0.ratelimit import reset_rate_limiter
 from api.main import app
 
@@ -95,13 +95,14 @@ def prod_client(db_session, monkeypatch):
 # ── Helper ─────────────────────────────────────────────────────────────────────
 
 
-def register(client: TestClient, email: str = "dev@example.com", name: str = "Yash") -> str:
+def register(client: TestClient, email: str = "dev@example.com", name: str = "Yash", password: str = "testpass123") -> str:
     """Register an account and return the full API key."""
-    resp = client.post("/v1/auth/register", json={"email": email, "name": name})
+    resp = client.post("/v1/auth/register", json={"email": email, "name": name, "password": password})
     assert resp.status_code == 201, resp.text
     data = resp.json()
     assert data["api_key"].startswith("r0_live_sk_")
     assert data["warning"]
+    assert "session_token" in data
     return data["api_key"]
 
 
@@ -109,7 +110,7 @@ def register(client: TestClient, email: str = "dev@example.com", name: str = "Ya
 
 
 def test_register_success(client):
-    resp = client.post("/v1/auth/register", json={"email": "user@test.com", "name": "Test"})
+    resp = client.post("/v1/auth/register", json={"email": "user@test.com", "name": "Test", "password": "securepass1"})
     assert resp.status_code == 201
     data = resp.json()
     assert "account_id" in data
@@ -118,11 +119,12 @@ def test_register_success(client):
     assert data["api_key"].startswith("r0_live_sk_")
     assert "key_prefix" in data
     assert data["warning"] == "Save this key now. We cannot show it again."
+    assert data["session_token"].startswith("session_")
 
 
 def test_register_duplicate_email(client):
-    client.post("/v1/auth/register", json={"email": "dup@test.com"})
-    resp = client.post("/v1/auth/register", json={"email": "dup@test.com"})
+    client.post("/v1/auth/register", json={"email": "dup@test.com", "password": "testpass123"})
+    resp = client.post("/v1/auth/register", json={"email": "dup@test.com", "password": "testpass123"})
     assert resp.status_code == 409
     assert resp.json()["detail"]["error"] == "email_already_registered"
 
@@ -283,3 +285,61 @@ def test_missing_key_rejected(client):
 def test_wrong_key_rejected(client):
     resp = client.get("/v1/auth/me", headers={"X-API-Key": "r0_live_sk_totallywrong"})
     assert resp.status_code == 401
+
+
+# ── Login / Logout / Session tests ─────────────────────────────────────────────
+
+
+def test_login_success(client):
+    register(client, email="login@test.com", password="mypassword1")
+    resp = client.post("/v1/auth/login", json={"email": "login@test.com", "password": "mypassword1"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["email"] == "login@test.com"
+    assert data["session_token"].startswith("session_")
+    assert "account_id" in data
+
+
+def test_login_wrong_password(client):
+    register(client, email="wrong@test.com", password="rightpass1")
+    resp = client.post("/v1/auth/login", json={"email": "wrong@test.com", "password": "wrongpass1"})
+    assert resp.status_code == 401
+    assert resp.json()["detail"]["error"] == "invalid_credentials"
+
+
+def test_login_unknown_email(client):
+    resp = client.post("/v1/auth/login", json={"email": "nobody@test.com", "password": "whatever1"})
+    assert resp.status_code == 401
+
+
+def test_session_auth_me(client):
+    """GET /auth/me works with X-Session-Token header."""
+    resp = client.post("/v1/auth/register", json={"email": "sess@test.com", "name": "S", "password": "sesspass123"})
+    token = resp.json()["session_token"]
+    resp = client.get("/v1/auth/me", headers={"X-Session-Token": token})
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "sess@test.com"
+
+
+def test_logout_invalidates_session(client):
+    resp = client.post("/v1/auth/register", json={"email": "out@test.com", "name": "O", "password": "outpass1234"})
+    token = resp.json()["session_token"]
+    # session works before logout
+    assert client.get("/v1/auth/me", headers={"X-Session-Token": token}).status_code == 200
+    # logout
+    resp = client.post("/v1/auth/logout", headers={"X-Session-Token": token})
+    assert resp.status_code == 200
+    assert resp.json()["logged_out"] is True
+    # session no longer works
+    resp = client.get("/v1/auth/me", headers={"X-Session-Token": token})
+    assert resp.status_code == 401
+
+
+def test_invalid_session_rejected(client):
+    resp = client.get("/v1/auth/me", headers={"X-Session-Token": "session_fake"})
+    assert resp.status_code == 401
+
+
+def test_register_password_too_short(client):
+    resp = client.post("/v1/auth/register", json={"email": "short@test.com", "name": "S", "password": "abc"})
+    assert resp.status_code == 422

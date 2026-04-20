@@ -6,6 +6,8 @@
 
 Endpoints:
   POST   /auth/register          — create account + first API key
+  POST   /auth/login              — email + password login
+  POST   /auth/logout             — invalidate session
   POST   /auth/keys/create       — generate additional key for an account
   GET    /auth/keys              — list all keys for an account
   DELETE /auth/keys/{key_prefix} — soft-delete a key (set is_active=False)
@@ -16,15 +18,17 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from rec0.database import get_db
 from rec0.keygen import check_api_key, generate_api_key
-from rec0.models import Account, ApiKey, UsageLog
+from rec0.models import Account, ApiKey, AuthSession, UsageLog
 from rec0.ratelimit import REGISTER_LIMIT, check_rate_limit
 from rec0.schemas import (
     AccountMeResponse,
@@ -32,6 +36,9 @@ from rec0.schemas import (
     KeyCreateResponse,
     KeyInfo,
     KeyListResponse,
+    LoginRequest,
+    LoginResponse,
+    LogoutResponse,
     RegisterRequest,
     RegisterResponse,
 )
@@ -43,6 +50,21 @@ router = APIRouter()
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 _DEV_KEY = "r0_dev_key_2026"
+_SESSION_DAYS = 30
+
+
+def _create_session(account_id: str, db: Session) -> str:
+    """Create a new session token for an account and persist it."""
+    token = f"session_{secrets.token_urlsafe(32)}"
+    now = datetime.now(timezone.utc)
+    session_row = AuthSession(
+        account_id=account_id,
+        session_token=token,
+        expires_at=now + timedelta(days=_SESSION_DAYS),
+        last_used_at=now,
+    )
+    db.add(session_row)
+    return token
 
 
 def _auth_error() -> HTTPException:
@@ -104,11 +126,38 @@ def _get_account_for_key(
     raise _auth_error()
 
 
+def _get_account_for_session(token: str, db: Session) -> Account:
+    """Resolve a session token to its Account."""
+    now = datetime.now(timezone.utc)
+    session_row = (
+        db.query(AuthSession)
+        .filter(AuthSession.session_token == token, AuthSession.expires_at > now)
+        .first()
+    )
+    if not session_row:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "invalid_session", "message": "Session expired or invalid."},
+        )
+    account = db.query(Account).filter(Account.id == session_row.account_id).first()
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "invalid_session", "message": "Account not found."},
+        )
+    session_row.last_used_at = now
+    db.commit()
+    return account
+
+
 def get_current_account(
     x_api_key: Optional[str] = Header(default=None),
+    x_session_token: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
 ) -> Account:
-    """FastAPI dependency — returns Account for the authenticated key."""
+    """FastAPI dependency — returns Account for the authenticated key or session."""
+    if x_session_token:
+        return _get_account_for_session(x_session_token, db)
     return _get_account_for_key(x_api_key, db)
 
 
@@ -158,8 +207,12 @@ def register(
             },
         )
 
-    # Create account
-    account = Account(email=payload.email, name=payload.name)
+    # Create account with password hash
+    password_hash = bcrypt.hashpw(
+        payload.password.encode("utf-8"),
+        bcrypt.gensalt(rounds=12),
+    ).decode("utf-8")
+    account = Account(email=payload.email, name=payload.name, password_hash=password_hash)
     db.add(account)
     db.flush()  # get account.id before creating the key
 
@@ -172,6 +225,10 @@ def register(
         name="Default key",
     )
     db.add(api_key_row)
+
+    # Create session
+    session_token = _create_session(str(account.id), db)
+
     db.commit()
 
     logger.info("Account registered: email=%s account_id=%s key_prefix=%s", payload.email, account.id, key_prefix)
@@ -182,7 +239,69 @@ def register(
         plan=account.plan,
         api_key=full_key,
         key_prefix=key_prefix,
+        session_token=session_token,
     )
+
+
+# ── POST /auth/login ───────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/auth/login",
+    response_model=LoginResponse,
+    summary="Log in with email and password",
+    description="Returns a session token valid for 30 days.",
+)
+def login(
+    payload: LoginRequest,
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    """Authenticate with email + password and receive a session token."""
+    account = db.query(Account).filter(Account.email == payload.email).first()
+    if not account or not account.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "invalid_credentials", "message": "Invalid email or password."},
+        )
+    if not bcrypt.checkpw(payload.password.encode("utf-8"), account.password_hash.encode("utf-8")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "invalid_credentials", "message": "Invalid email or password."},
+        )
+    session_token = _create_session(str(account.id), db)
+    db.commit()
+    logger.info("Login successful: email=%s account_id=%s", payload.email, account.id)
+    return LoginResponse(account_id=str(account.id), email=account.email, session_token=session_token)
+
+
+# ── POST /auth/logout ──────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/auth/logout",
+    response_model=LogoutResponse,
+    summary="Log out and invalidate session",
+    description="Deletes the session token. The client should also discard the token.",
+)
+def logout(
+    x_session_token: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    """Delete the session identified by the header token."""
+    if not x_session_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "missing_session", "message": "No session token provided."},
+        )
+    deleted = (
+        db.query(AuthSession)
+        .filter(AuthSession.session_token == x_session_token)
+        .delete()
+    )
+    db.commit()
+    if deleted:
+        logger.info("Logout: session invalidated")
+    return LogoutResponse(logged_out=True)
 
 
 # ── POST /auth/keys/create ─────────────────────────────────────────────────────

@@ -51,6 +51,7 @@ class Account(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(Text, unique=True, nullable=False)
     name = Column(Text, nullable=True)
+    password_hash = Column(Text, nullable=True)  # NULL for legacy accounts without password
     plan = Column(String(32), default="free", nullable=False)
     credits = Column(Integer, default=0, nullable=False)
     ops_used = Column(Integer, default=0, nullable=False)
@@ -107,3 +108,27 @@ class UsageLog(Base):
     )
 
     __table_args__ = (Index("ix_usage_logs_account_id", "account_id"),)
+
+
+class AuthSession(Base):
+    __tablename__ = "sessions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
+    session_token = Column(Text, unique=True, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    last_used_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_sessions_token", "session_token"),
+        Index("ix_sessions_account_id", "account_id"),
+    )
