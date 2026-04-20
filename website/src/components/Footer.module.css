@@ -13,7 +13,7 @@
   font-family: 'Syne', sans-serif;
   font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
   color: var(--white); margin-bottom: 14px; display: block;
-  cursor: pointer;
+  text-decoration: none; cursor: pointer;
 }
 .brand .logo span { color: var(--accent); }
 .brand p { font-size: 13.5px; color: var(--muted); line-height: 1.75; max-width: 240px; }

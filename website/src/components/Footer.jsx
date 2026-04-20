@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'
 
 const COLS = [
@@ -30,7 +31,7 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.top}>
         <div className={styles.brand}>
-          <span className={styles.logo}>Rec<span>0</span></span>
+          <Link to="/" className={styles.logo}>Rec<span>0</span></Link>
           <p>The memory API for AI applications. Persistent, intelligent, and developer-first.</p>
         </div>
         {COLS.map((col) => (

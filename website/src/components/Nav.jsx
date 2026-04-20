@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ThemeToggle from './ThemeToggle'
 import styles from './Nav.module.css'
@@ -30,9 +31,9 @@ export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         data-scrolled={scrolled}
       >
-        <span className={styles.logo} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        <Link to="/" className={styles.logo}>
           Rec<span>0</span>
-        </span>
+        </Link>
 
         <ul className={styles.links}>
           {links.map((l) => (
@@ -70,6 +71,9 @@ export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
             {links.map((l) => (
               <a key={l.label} href={l.href} onClick={() => setMobileOpen(false)}>{l.label}</a>
             ))}
+            <button className={styles.ghost} onClick={() => { onSignin(); setMobileOpen(false) }}>
+              Sign in
+            </button>
             <button className={styles.pill} style={{ marginTop: 16 }} onClick={() => { onCTA(); setMobileOpen(false) }}>
               Start free →
             </button>
