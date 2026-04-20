@@ -27,6 +27,8 @@ export default function Signup() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -36,6 +38,15 @@ export default function Signup() {
     e.preventDefault()
     if (loading) return
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
     setError(null)
     setLoading(true)
 
@@ -43,7 +54,7 @@ export default function Signup() {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined }),
+        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined, password }),
       })
 
       if (!response.ok) {
@@ -59,6 +70,10 @@ export default function Signup() {
       }
 
       const result = await response.json()
+      // Store session cookie
+      if (result.session_token) {
+        document.cookie = `session_token=${result.session_token}; path=/; max-age=2592000; SameSite=Strict; Secure`
+      }
       setData(result)
     } catch {
       setError("Couldn't reach our servers. Check your connection and try again.")
@@ -199,6 +214,34 @@ mem.store(user_id="user_123",
             />
           </label>
 
+          <label className={styles.label}>
+            Password
+            <input
+              type="password"
+              className={styles.input}
+              placeholder="Min 8 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={8}
+            />
+          </label>
+
+          <label className={styles.label}>
+            Confirm password
+            <input
+              type="password"
+              className={styles.input}
+              placeholder="Repeat password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={8}
+            />
+          </label>
+
           <label className={styles.checkbox}>
             <input
               type="checkbox"
@@ -235,8 +278,8 @@ mem.store(user_id="user_123",
         </form>
 
         <p className={styles.signinLink}>
-          Already have a key?{' '}
-          <Link to="/dashboard">Sign in</Link>
+          Already have an account?{' '}
+          <Link to="/login">Sign in</Link>
         </p>
       </motion.div>
     </div>

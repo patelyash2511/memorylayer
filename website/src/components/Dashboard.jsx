@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
 
 const API = 'https://memorylayer-production.up.railway.app/v1'
+
+function getSessionToken() {
+  const match = document.cookie.match(/(?:^|; )session_token=([^;]*)/)
+  return match ? match[1] : null
+}
+
+function clearSessionCookie() {
+  document.cookie = 'session_token=; path=/; max-age=0; SameSite=Strict; Secure'
+}
 
 /* ── tiny copy helper ──────────────────────────────────── */
 function CopyBtn({ text, label = 'Copy' }) {
@@ -23,18 +32,26 @@ function CopyBtn({ text, label = 'Copy' }) {
 
 /* ── main dashboard ────────────────────────────────────── */
 export default function Dashboard() {
-  const location = useLocation()
-  const [apiKey, setApiKey] = useState(location.state?.apiKey || '')
+  const navigate = useNavigate()
   const [account, setAccount] = useState(null)
   const [keys, setKeys] = useState([])
   const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  // auto-login when arriving from signup with key in state
+  const sessionToken = getSessionToken()
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
+  }
+
+  // auto-load on mount if session exists
   useEffect(() => {
-    if (location.state?.apiKey && !account) {
-      loadDashboard(location.state.apiKey)
+    if (!sessionToken) {
+      navigate('/login')
+      return
     }
+    loadDashboard()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // new-key form state
@@ -46,28 +63,22 @@ export default function Dashboard() {
   // deleting key
   const [deletingPrefix, setDeletingPrefix] = useState(null)
 
-  const headers = { 'Content-Type': 'application/json', 'X-API-Key': apiKey }
-
   /* ── fetch account + keys ─────────────────────────────── */
-  async function loadDashboard(keyOverride) {
-    const key = keyOverride || apiKey
-    if (!key.trim()) return
-    const hdrs = { 'Content-Type': 'application/json', 'X-API-Key': key }
+  async function loadDashboard() {
     setError(null)
     setLoading(true)
     try {
       const [meResp, keysResp] = await Promise.all([
-        fetch(`${API}/auth/me`, { headers: hdrs }),
-        fetch(`${API}/auth/keys`, { headers: hdrs }),
+        fetch(`${API}/auth/me`, { headers }),
+        fetch(`${API}/auth/keys`, { headers }),
       ])
       if (!meResp.ok || !keysResp.ok) {
         if (meResp.status === 401 || keysResp.status === 401) {
-          setError('Invalid API key. Check your key and try again.')
-        } else if (meResp.status === 403 || keysResp.status === 403) {
-          setError('Dev keys cannot access the dashboard. Register at /signup to get a real key.')
-        } else {
-          setError('Something went wrong loading your account.')
+          clearSessionCookie()
+          navigate('/login')
+          return
         }
+        setError('Something went wrong loading your account.')
         setLoading(false)
         return
       }
@@ -80,11 +91,6 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  function handleLogin(e) {
-    e.preventDefault()
-    loadDashboard()
   }
 
   /* ── create key ───────────────────────────────────────── */
@@ -151,7 +157,7 @@ export default function Dashboard() {
     }
   }
 
-  /* ── login screen ─────────────────────────────────────── */
+  /* ── loading / redirect state ───────────────────────────── */
   if (!account) {
     return (
       <div className={styles.page}>
@@ -164,48 +170,22 @@ export default function Dashboard() {
           transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           <h1 className={styles.heading}>Dashboard</h1>
-          <p className={styles.sub}>
-            Paste your API key to view your account, usage, and manage keys.
-          </p>
-
-          {error && (
-            <motion.div
-              className={styles.error}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {error}
-            </motion.div>
-          )}
-
-          <form className={styles.form} onSubmit={handleLogin}>
-            <label className={styles.label}>
-              API Key
-              <input
-                type="password"
-                className={styles.input}
-                placeholder="r0_live_sk_..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                required
-                autoComplete="off"
-              />
-            </label>
-            <button type="submit" className={styles.submit} disabled={loading || !apiKey.trim()}>
-              {loading ? (
-                <>
-                  <span className={styles.spinner} />
-                  Loading…
-                </>
-              ) : (
-                'Sign in →'
-              )}
-            </button>
-          </form>
-
-          <p className={styles.footerLink}>
-            Don't have a key? <Link to="/signup">Sign up free</Link>
-          </p>
+          {loading ? (
+            <p className={styles.sub}>Loading your account…</p>
+          ) : error ? (
+            <>
+              <motion.div
+                className={styles.error}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {error}
+              </motion.div>
+              <p className={styles.footerLink}>
+                <Link to="/login">Back to sign in</Link>
+              </p>
+            </>
+          ) : null}
         </motion.div>
       </div>
     )
@@ -408,7 +388,13 @@ results = mem.recall(user_id="user_123",
           </a>
           <button
             className={styles.logoutBtn}
-            onClick={() => { setAccount(null); setKeys([]); setApiKey(''); setError(null) }}
+            onClick={async () => {
+              try {
+                await fetch(`${API}/auth/logout`, { method: 'POST', headers })
+              } catch { /* ignore */ }
+              clearSessionCookie()
+              navigate('/login')
+            }}
           >
             Sign out
           </button>

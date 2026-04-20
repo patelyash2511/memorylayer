@@ -14,6 +14,7 @@ import BuiltInPublic from './components/BuiltInPublic'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Signup from './components/Signup'
+import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import Benchmark from './components/Benchmark'
 import Roadmap from './components/Roadmap'
@@ -63,7 +64,7 @@ function LandingPage({ onCTA }) {
 export default function App() {
   const navigate = useNavigate()
   const goSignup = useCallback(() => navigate('/signup'), [navigate])
-  const goSignin = useCallback(() => navigate('/dashboard'), [navigate])
+  const goSignin = useCallback(() => navigate('/login'), [navigate])
   useLenis()
 
   const [theme, setTheme] = useState(getInitialTheme)
@@ -84,6 +85,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage onCTA={goSignup} />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/benchmark" element={<Benchmark />} />
         <Route path="/roadmap" element={<Roadmap />} />
