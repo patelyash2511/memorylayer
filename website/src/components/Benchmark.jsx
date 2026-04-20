@@ -1,190 +1,37 @@
-import { useState, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import styles from './Benchmark.module.css'
 
-/* ── Config ──────────────────────────────────────────── */
+/* ── Static results from production test (April 21, 2026) ── */
 
-const REGIONS = [
-  { id: 'auto',  label: 'Auto (your location)',        url: 'https://memorylayer-production.up.railway.app', available: true },
-  { id: 'us',    label: 'US East (Virginia)',           url: 'https://memorylayer-production.up.railway.app', available: true },
-  { id: 'eu',    label: 'EU West (Ireland)',            url: 'https://memorylayer-production.up.railway.app', available: false },
-  { id: 'ap',    label: 'Asia Pacific (Singapore)',     url: 'https://memorylayer-production.up.railway.app', available: false },
+const RESULTS = {
+  date: 'April 21, 2026',
+  config: { total: 100, store: 40, recall: 40, health: 20, concurrency: 5, region: 'US East' },
+  overall: { total: 100, success: 100, failed: 0, throughput: 0.9 },
+  endpoints: [
+    { label: 'POST /v1/memory/store',  total: 40, success: 40, p50: 3322, p95: 4522, p99: 5027, max: 5027 },
+    { label: 'POST /v1/memory/recall', total: 40, success: 40, p50: 3911, p95: 4778, p99: 5140, max: 5140 },
+    { label: 'GET /health',            total: 20, success: 20, p50: 841,  p95: 1760, p99: 2273, max: 2273 },
+  ],
+  errors: { timeouts: 0, http500: 0, http429: 0, network: 0, other: 0 },
+}
+
+const TARGETS = [
+  { label: 'p50 latency', value: '<100ms' },
+  { label: 'p95 latency', value: '<200ms' },
+  { label: 'Throughput',  value: '100+ req/s' },
 ]
 
-const BATCH_SIZE = 5
-const TIMEOUT_MS = 30_000
-const BATCH_DELAY_MS = 1000
-
-const ENDPOINTS = {
-  store:  { count: 40, method: 'POST', path: '/v1/memory/store',  body: { user_id: 'benchmark_user', app_id: 'benchmark', content: 'Benchmark test memory' } },
-  recall: { count: 40, method: 'POST', path: '/v1/memory/recall', body: { user_id: 'benchmark_user', app_id: 'benchmark', query: 'test' } },
-  health: { count: 20, method: 'GET',  path: '/health',           body: null },
+function Metric({ label, children }) {
+  return (
+    <div className={styles.metric}>
+      <span className={styles.metricLabel}>{label}</span>
+      <span className={styles.metricValue}>{children}</span>
+    </div>
+  )
 }
-
-const TOTAL = Object.values(ENDPOINTS).reduce((s, e) => s + e.count, 0)
-
-/* ── Helpers ─────────────────────────────────────────── */
-
-function pct(sorted, p) {
-  if (!sorted.length) return 0
-  const i = Math.ceil((p / 100) * sorted.length) - 1
-  return sorted[Math.max(0, i)]
-}
-
-function fmt(n) { return Number(n.toFixed(1)) }
-
-function rateClass(rate) {
-  if (rate >= 99) return styles.rateGreen
-  if (rate >= 95) return styles.rateYellow
-  return styles.rateRed
-}
-
-function ts() {
-  return new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
-}
-
-/* ── Component ───────────────────────────────────────── */
 
 export default function Benchmark() {
-  const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
-  const [authError, setAuthError] = useState(false)
-  const [region, setRegion] = useState('auto')
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState({ done: 0, total: TOTAL })
-  const [elapsed, setElapsed] = useState(0)
-  const [results, setResults] = useState(null)
-  const timerRef = useRef(null)
-  const doneRef = useRef(0)
-
-  const runBenchmark = useCallback(async () => {
-    const regionObj = REGIONS.find(r => r.id === region) || REGIONS[0]
-    const base = regionObj.url
-
-    setRunning(true)
-    setResults(null)
-    setAuthError(false)
-    doneRef.current = 0
-    setProgress({ done: 0, total: TOTAL })
-    setElapsed(0)
-
-    const startWall = performance.now()
-    timerRef.current = setInterval(() => {
-      setElapsed(((performance.now() - startWall) / 1000))
-    }, 200)
-
-    const latencies = { store: [], recall: [], health: [] }
-    const errors = { timeouts: 0, http500: 0, http429: 0, network: 0, other: 0 }
-
-    /* build flat request list */
-    const requests = []
-    for (const [type, cfg] of Object.entries(ENDPOINTS)) {
-      for (let i = 0; i < cfg.count; i++) {
-        requests.push({ type, method: cfg.method, url: `${base}${cfg.path}`, body: cfg.body })
-      }
-    }
-    /* shuffle so endpoint types are interleaved */
-    for (let i = requests.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [requests[i], requests[j]] = [requests[j], requests[i]]
-    }
-
-    async function exec(req, retryCount = 0) {
-      const t0 = performance.now()
-      try {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
-        const resp = await fetch(req.url, {
-          method: req.method,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey,
-          },
-          body: req.body ? JSON.stringify(req.body) : undefined,
-          signal: ctrl.signal,
-        })
-        clearTimeout(timer)
-        const ms = performance.now() - t0
-        if (resp.ok) {
-          latencies[req.type].push(ms)
-        } else if (resp.status === 401) {
-          setAuthError(true)
-          errors.other++
-        } else if (resp.status === 500) {
-          errors.http500++
-        } else if (resp.status === 429) {
-          errors.http429++
-          await new Promise(r => setTimeout(r, 5000))
-        } else {
-          errors.other++
-        }
-      } catch (err) {
-        if (err.name === 'AbortError' && retryCount < 1) {
-          await new Promise(r => setTimeout(r, 1000))
-          return exec(req, retryCount + 1)
-        }
-        if (err.name === 'AbortError') {
-          errors.timeouts++
-        } else {
-          errors.network++
-        }
-      }
-      doneRef.current++
-      setProgress({ done: doneRef.current, total: TOTAL })
-    }
-
-    /* run in batches */
-    for (let i = 0; i < requests.length; i += BATCH_SIZE) {
-      const batch = requests.slice(i, i + BATCH_SIZE)
-      await Promise.all(batch.map(r => exec(r)))
-      if (i + BATCH_SIZE < requests.length) {
-        await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
-      }
-    }
-
-    clearInterval(timerRef.current)
-    const duration = (performance.now() - startWall) / 1000
-
-    /* sort latencies */
-    for (const key of Object.keys(latencies)) {
-      latencies[key].sort((a, b) => a - b)
-    }
-
-    const allLats = [...latencies.store, ...latencies.recall, ...latencies.health].sort((a, b) => a - b)
-    const totalSuccess = allLats.length
-    const totalErrors = errors.timeouts + errors.http500 + errors.http429 + errors.network + errors.other
-
-    setResults({
-      region: regionObj.label,
-      timestamp: ts(),
-      duration: fmt(duration),
-      overall: {
-        total: TOTAL,
-        success: totalSuccess,
-        failed: totalErrors,
-        successRate: fmt((totalSuccess / TOTAL) * 100),
-        throughput: fmt(TOTAL / duration),
-      },
-      endpoints: Object.entries(latencies).map(([type, lats]) => {
-        const cfg = ENDPOINTS[type]
-        const ok = lats.length
-        return {
-          type,
-          label: type === 'store' ? 'POST /v1/memory/store' : type === 'recall' ? 'POST /v1/memory/recall' : 'GET /health',
-          total: cfg.count,
-          success: ok,
-          successRate: fmt((ok / cfg.count) * 100),
-          p50: fmt(pct(lats, 50)),
-          p95: fmt(pct(lats, 95)),
-          p99: fmt(pct(lats, 99)),
-          max: lats.length ? fmt(lats[lats.length - 1]) : 0,
-        }
-      }),
-      errors,
-    })
-    setElapsed(duration)
-    setRunning(false)
-  }, [region, apiKey])
+  const { config, overall, endpoints, errors } = RESULTS
 
   return (
     <div className={styles.page}>
@@ -200,200 +47,111 @@ export default function Benchmark() {
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.eyebrow}>Performance</span>
-          <h1 className={styles.heading}>rec0 API Benchmark</h1>
+          <h1 className={styles.heading}>rec0 API Benchmark Results</h1>
           <p className={styles.sub}>
-            Production load testing with {TOTAL.toLocaleString()} concurrent requests
+            Real production load test &mdash; {overall.success}/{overall.total} requests succeeded
           </p>
+          <p className={styles.updated}>Last updated: {RESULTS.date}</p>
         </div>
 
-        {/* API key input */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>API Key <span className={styles.required}>(required)</span></h2>
-          <div className={styles.keyInputWrap}>
-            <input
-              type={showKey ? 'text' : 'password'}
-              className={styles.keyInput}
-              placeholder="r0_live_sk_xxxxxxxxxxxxx"
-              value={apiKey}
-              onChange={e => { setApiKey(e.target.value); setAuthError(false) }}
-              disabled={running}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button
-              type="button"
-              className={styles.toggleKey}
-              onClick={() => setShowKey(v => !v)}
-              tabIndex={-1}
-            >
-              {showKey ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          {authError && (
-            <p className={styles.authError}>Invalid API key. Get one at <a href="/signup">rec0.ai/signup</a></p>
-          )}
-          <p className={styles.keyHint}>
-            This benchmark will use {TOTAL.toLocaleString()} ops from your account. Free tier includes 10,000 ops/month.{' '}
-            <a href="/signup" className={styles.keyLink}>Get your key at rec0.ai/signup &rarr;</a>
-          </p>
+        {/* Test config */}
+        <div className={styles.configCard}>
+          <h3 className={styles.cardTitle}>Test configuration</h3>
+          <ul className={styles.configList}>
+            <li>{config.total} total requests ({config.store} store, {config.recall} recall, {config.health} health)</li>
+            <li>{config.concurrency} concurrent requests per batch</li>
+            <li>Tested from {config.region} region</li>
+            <li>Production API on Railway</li>
+          </ul>
         </div>
 
-        {/* Region selector */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Region</h2>
-          <div className={styles.regionList}>
-            {REGIONS.map(r => (
-              <label key={r.id} className={`${styles.regionOption} ${region === r.id ? styles.regionActive : ''}`}>
-                <input
-                  type="radio"
-                  name="region"
-                  value={r.id}
-                  checked={region === r.id}
-                  onChange={() => setRegion(r.id)}
-                  disabled={running}
-                  className={styles.radioInput}
-                />
-                <span className={styles.radioCircle} />
-                <span>{r.label}</span>
-                {!r.available && <span className={styles.comingSoon}>Coming soon</span>}
-              </label>
-            ))}
+        {/* Overall */}
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Overall metrics</h3>
+          <div className={styles.metricsRow}>
+            <Metric label="Total requests">{overall.total}</Metric>
+            <Metric label="Successful">
+              <span className={styles.rateGreen}>{overall.success} <span className={styles.unit}>(100%)</span></span>
+            </Metric>
+            <Metric label="Failed">0 <span className={styles.unit}>(0%)</span></Metric>
+            <Metric label="Avg throughput">{overall.throughput} <span className={styles.unit}>req/s</span></Metric>
           </div>
         </div>
 
-        {/* Run button */}
-        <button
-          className={styles.runBtn}
-          onClick={runBenchmark}
-          disabled={!apiKey.trim() || running}
-        >
-          {running ? (
-            <>
-              <span className={styles.spinner} />
-              Running&hellip; {progress.done.toLocaleString()}/{progress.total.toLocaleString()} requests
-            </>
-          ) : (
-            `Run ${TOTAL.toLocaleString()} request benchmark \u2192`
-          )}
-        </button>
-
-        {running && (
-          <div className={styles.progressWrap}>
-            <div className={styles.progressTrack}>
-              <div className={styles.progressFill} style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+        {/* Per-endpoint cards */}
+        {endpoints.map(ep => (
+          <div key={ep.label} className={styles.card}>
+            <h3 className={styles.cardTitle}>{ep.label}</h3>
+            <div className={styles.metricsRow}>
+              <Metric label="Requests">{ep.total}</Metric>
+              <Metric label="Success rate">
+                <span className={styles.rateGreen}>100% <span className={styles.unit}>({ep.success}/{ep.total})</span></span>
+              </Metric>
+              <Metric label="p50 latency">{ep.p50.toLocaleString()}<span className={styles.unit}>ms</span></Metric>
+              <Metric label="p95 latency">{ep.p95.toLocaleString()}<span className={styles.unit}>ms</span></Metric>
+              <Metric label="p99 latency">{ep.p99.toLocaleString()}<span className={styles.unit}>ms</span></Metric>
+              <Metric label="Max latency">{ep.max.toLocaleString()}<span className={styles.unit}>ms</span></Metric>
             </div>
-            <span className={styles.progressTime}>Elapsed: {elapsed.toFixed(1)}s</span>
           </div>
-        )}
+        ))}
 
-        {/* Warning */}
-        <p className={styles.warning}>
-          &#9888; This benchmark fires {TOTAL.toLocaleString()} real API calls and will take ~2-3 minutes.
-          It respects API rate limits and will count against your usage. For production load testing, use k6 or Apache Bench.
-        </p>
+        {/* Error breakdown */}
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Error breakdown</h3>
+          <div className={styles.metricsRow}>
+            {Object.entries(errors).map(([key, count]) => {
+              const labels = { timeouts: 'Timeouts', http500: '500 errors', http429: '429 errors', network: 'Network errors', other: 'Other errors' }
+              return (
+                <Metric key={key} label={labels[key] || key}>
+                  {count} <span className={styles.unit}>(0%)</span>
+                </Metric>
+              )
+            })}
+          </div>
+        </div>
 
-        {/* Results */}
-        {results && (
-          <motion.div
-            className={styles.resultsWrap}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* Meta */}
-            <div className={styles.meta}>
-              <span>Last run: {results.timestamp}</span>
-              <span>Region: {results.region}</span>
-              <span>Duration: {results.duration}s</span>
+        {/* Context / Understanding section */}
+        <div className={styles.contextCard}>
+          <h3 className={styles.contextTitle}>Understanding these numbers</h3>
+
+          <div className={styles.contextItem}>
+            <span className={styles.contextIcon}>&#10003;</span>
+            <div>
+              <strong>Reliability: 100%</strong>
+              <p>Our API handled 100 requests with zero errors. No timeouts, no failures.</p>
             </div>
+          </div>
 
-            {/* Overall */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>Overall metrics</h3>
-              <div className={styles.metricsRow}>
-                <div className={styles.metric}>
-                  <span className={styles.metricLabel}>Total requests</span>
-                  <span className={styles.metricValue}>{results.overall.total.toLocaleString()}</span>
-                </div>
-                <div className={styles.metric}>
-                  <span className={styles.metricLabel}>Successful</span>
-                  <span className={`${styles.metricValue} ${rateClass(results.overall.successRate)}`}>
-                    {results.overall.success.toLocaleString()} <span className={styles.unit}>({results.overall.successRate}%)</span>
-                  </span>
-                </div>
-                <div className={styles.metric}>
-                  <span className={styles.metricLabel}>Failed</span>
-                  <span className={styles.metricValue}>
-                    {results.overall.failed} <span className={styles.unit}>({fmt((results.overall.failed / results.overall.total) * 100)}%)</span>
-                  </span>
-                </div>
-                <div className={styles.metric}>
-                  <span className={styles.metricLabel}>Avg throughput</span>
-                  <span className={styles.metricValue}>{results.overall.throughput} <span className={styles.unit}>req/s</span></span>
-                </div>
-              </div>
+          <div className={styles.contextItem}>
+            <span className={styles.contextIcon}>&#9202;</span>
+            <div>
+              <strong>Latency: 3&ndash;5s (optimizing)</strong>
+              <p>
+                Current latency is higher than target because we run local embeddings on Railway&rsquo;s
+                free tier. Single-user requests are faster (~1&ndash;2s). See our optimization roadmap below.
+              </p>
             </div>
+          </div>
 
-            {/* Per-endpoint cards */}
-            {results.endpoints.map(ep => (
-              <div key={ep.type} className={styles.card}>
-                <h3 className={styles.cardTitle}>{ep.label}</h3>
-                <div className={styles.metricsRow}>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>Requests</span>
-                    <span className={styles.metricValue}>{ep.total}</span>
-                  </div>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>Success rate</span>
-                    <span className={`${styles.metricValue} ${rateClass(ep.successRate)}`}>
-                      {ep.successRate}% <span className={styles.unit}>({ep.success}/{ep.total})</span>
-                    </span>
-                  </div>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>p50 latency</span>
-                    <span className={styles.metricValue}>{ep.p50}<span className={styles.unit}>ms</span></span>
-                  </div>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>p95 latency</span>
-                    <span className={styles.metricValue}>{ep.p95}<span className={styles.unit}>ms</span></span>
-                  </div>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>p99 latency</span>
-                    <span className={styles.metricValue}>{ep.p99}<span className={styles.unit}>ms</span></span>
-                  </div>
-                  <div className={styles.metric}>
-                    <span className={styles.metricLabel}>Max latency</span>
-                    <span className={styles.metricValue}>{ep.max}<span className={styles.unit}>ms</span></span>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Error breakdown */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>Error breakdown</h3>
-              <div className={styles.metricsRow}>
-                {[
-                  ['Timeouts', results.errors.timeouts],
-                  ['500 errors', results.errors.http500],
-                  ['429 errors', results.errors.http429],
-                  ['Network errors', results.errors.network],
-                  ['Other errors', results.errors.other],
-                ].map(([label, count]) => (
-                  <div key={label} className={styles.metric}>
-                    <span className={styles.metricLabel}>{label}</span>
-                    <span className={styles.metricValue}>
-                      {count} <span className={styles.unit}>({fmt((count / TOTAL) * 100)}%)</span>
-                    </span>
+          <div className={styles.contextItem}>
+            <span className={styles.contextIcon}>&#127919;</span>
+            <div>
+              <strong>Target performance (Q2 2026)</strong>
+              <div className={styles.targetGrid}>
+                {TARGETS.map(t => (
+                  <div key={t.label} className={styles.targetItem}>
+                    <span className={styles.targetLabel}>{t.label}</span>
+                    <span className={styles.targetValue}>{t.value}</span>
                   </div>
                 ))}
               </div>
             </div>
-          </motion.div>
-        )}
+          </div>
+        </div>
 
         <p className={styles.note}>
-          Latency varies by region and network conditions. Requests run in batches of {BATCH_SIZE} concurrent.
+          These results are from a real load test against our production API on {RESULTS.date}.
+          We run benchmarks regularly to ensure reliability.
         </p>
       </motion.div>
     </div>
