@@ -9,7 +9,7 @@
   flex: 1;
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #e5e7eb;
   overflow: hidden;
 }
 
@@ -63,8 +63,8 @@
 .quickstartCard {
   margin: 18px 0 22px;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(6, 10, 16, 0.76);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   overflow: hidden;
 }
 
@@ -74,11 +74,11 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .quickstartLabel {
-  color: rgba(255, 255, 255, 0.72);
+  color: #6b7280;
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   letter-spacing: 1.4px;
@@ -89,10 +89,29 @@
   margin: 0;
   padding: 18px 16px 20px;
   overflow-x: auto;
-  color: #d8f9ec;
+  color: #111827;
   font-family: 'DM Mono', monospace;
   font-size: 13px;
   line-height: 1.7;
+  background: #f8f9fc;
+}
+
+.copyBtn {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copyBtn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .actions {

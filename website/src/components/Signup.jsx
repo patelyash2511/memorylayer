@@ -266,7 +266,7 @@ mem.store(user_id="user_123",
         >
           <div className={authStyles.successIcon}>✓</div>
           <h1 className={authStyles.heading}>Account created</h1>
-          <p className={authStyles.subtle}>Save your API key now. We won't be able to show it again.</p>
+          <p className={authStyles.subtle}>Save your API key now. You can reveal it later from the dashboard while signed in.</p>
 
           <div className={authStyles.apiKeyBox}>
             <code className={authStyles.apiKeyText}>{successData.api_key}</code>

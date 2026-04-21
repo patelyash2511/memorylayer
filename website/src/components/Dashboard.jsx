@@ -167,6 +167,8 @@ export default function Dashboard() {
 
   async function copyKey(keyValue, keyId) {
     if (!keyValue) {
+      setError('This is a legacy key from before secure reveal storage was enabled. Create a new key to reveal and copy it from the dashboard.')
+      setShowCreate(true)
       return
     }
     try {
@@ -191,6 +193,16 @@ export default function Dashboard() {
     }
     const visiblePrefix = key.key.substring(0, 16)
     return `${visiblePrefix}${'•'.repeat(Math.max(8, key.key.length - 16))}`
+  }
+
+  function handleKeyVisibility(key) {
+    if (!key.revealable) {
+      setError('This is a legacy key from before secure reveal storage was enabled. Create a new key to reveal and copy it from the dashboard.')
+      setShowCreate(true)
+      return
+    }
+
+    toggleKeyVisibility(key.id)
   }
 
   if (loading) {
@@ -343,7 +355,7 @@ export default function Dashboard() {
                     <div className={styles.newKeyBox}>
                       <div>
                         <p className={styles.newKeyTitle}>Save this key now</p>
-                        <p className={styles.newKeyMeta}>It will not be shown again after you close this panel.</p>
+                        <p className={styles.newKeyMeta}>You can reveal it later from the dashboard while signed in.</p>
                       </div>
                       <div className={styles.newKeyActions}>
                         <code>{newKeyResult.api_key}</code>
@@ -389,9 +401,8 @@ export default function Dashboard() {
                       <button
                         className={styles.iconBtn}
                         type="button"
-                        onClick={() => toggleKeyVisibility(key.id)}
-                        disabled={!key.revealable}
-                        title={key.revealable ? (visibleKeys.has(key.id) ? 'Hide key' : 'Show key') : 'Legacy keys cannot be revealed'}
+                        onClick={() => handleKeyVisibility(key)}
+                        title={key.revealable ? (visibleKeys.has(key.id) ? 'Hide key' : 'Show key') : 'Legacy keys require rotation before reveal'}
                       >
                         {visibleKeys.has(key.id) ? '🙈' : '👁️'}
                       </button>
@@ -400,8 +411,7 @@ export default function Dashboard() {
                         className={styles.iconBtn}
                         type="button"
                         onClick={() => copyKey(key.key, key.id)}
-                        disabled={!key.revealable}
-                        title={key.revealable ? 'Copy to clipboard' : 'Legacy keys cannot be copied'}
+                        title={key.revealable ? 'Copy to clipboard' : 'Legacy keys require rotation before copy'}
                       >
                         {copiedKeys.has(key.id) ? '✅' : '📋'}
                       </button>

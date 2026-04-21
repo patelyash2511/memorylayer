@@ -484,19 +484,14 @@
   transition: all 0.2s;
 }
 
-.iconBtn:hover:not(:disabled) {
+.iconBtn:hover {
   background: var(--bg-tertiary);
   border-color: #d1d5db;
   transform: translateY(-1px);
 }
 
-.iconBtn:active:not(:disabled) {
+.iconBtn:active {
   transform: translateY(0);
-}
-
-.iconBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .linksList {
