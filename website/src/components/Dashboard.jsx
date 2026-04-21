@@ -15,7 +15,7 @@ function CopyBtn({ text, label = 'Copy' }) {
   }, [text])
 
   return (
-    <button className={styles.copyBtn} onClick={copy} type="button">
+    <button className={styles.secondaryBtn} onClick={copy} type="button">
       {copied ? 'Copied' : label}
     </button>
   )
@@ -159,74 +159,44 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.orbPrimary} />
-        <div className={styles.orbSecondary} />
-        <div className={styles.gridGlow} />
-        <motion.div
-          className={styles.loadingPanel}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className={styles.skeletonHero} />
-          <div className={styles.skeletonRow} />
-          <div className={styles.skeletonGrid}>
-            <span />
-            <span />
-            <span />
-          </div>
-        </motion.div>
-      </div>
-    )
+    return <div className={styles.loading}>Loading your dashboard...</div>
   }
 
   if (!account) {
     return (
-      <div className={styles.page}>
-        <div className={styles.orbPrimary} />
-        <div className={styles.orbSecondary} />
-        <div className={styles.gridGlow} />
-        <div className={styles.loadingPanel}>
-          <h1 className={styles.dashboardTitle}>Dashboard unavailable</h1>
-          <p className={styles.headerSubtitle}>{error || 'We could not load your account right now.'}</p>
+      <div className={styles.container}>
+        <div className={styles.errorWrap}>
+          <div className={styles.error}>{error || 'We could not load your account right now.'}</div>
         </div>
       </div>
     )
   }
 
-  const usagePct = account.ops_limit
-    ? Math.min(100, Math.round((account.ops_used_this_month / account.ops_limit) * 100))
-    : 0
-  const remainingOps = Math.max(0, (account.ops_limit || 0) - (account.ops_used_this_month || 0))
+  const usageRatio = account.ops_limit ? account.ops_used_this_month / account.ops_limit : 0
+  const usagePercent = Math.min(100, usageRatio * 100)
+  const welcomeName = account.email.split('@')[0]
 
   return (
-    <div className={styles.page}>
-      <div className={styles.orbPrimary} />
-      <div className={styles.orbSecondary} />
-      <div className={styles.gridGlow} />
-
-      <motion.div
-        className={styles.dashboard}
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        <header className={styles.heroCard}>
-          <div className={styles.heroCopy}>
-            <span className={styles.heroEyebrow}>Authenticated session</span>
-            <h1 className={styles.dashboardTitle}>Dashboard</h1>
-            <p className={styles.headerSubtitle}>
-              Welcome back, {account.email.split('@')[0]}. Monitor monthly usage, manage API keys, and ship against the live platform.
-            </p>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.headerLeft}>
+            <h1>Dashboard</h1>
+            <p>Welcome back, {welcomeName}</p>
           </div>
-          <div className={styles.heroActions}>
-            <span className={styles.planBadge}>{account.plan} plan</span>
-            <button className={styles.ghostAction} onClick={handleSignOut}>Sign out</button>
+          <div className={styles.headerActions}>
+            <div className={styles.sessionBadge}>
+              <span className={styles.sessionDot}></span>
+              Authenticated
+            </div>
+            <button className={styles.secondaryBtn} onClick={handleSignOut} type="button">
+              Sign out
+            </button>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <main className={styles.main}>
         {error && (
           <motion.div
             className={styles.error}
@@ -237,47 +207,70 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Usage this month</span>
-            <span className={styles.statValue}>
-              {account.ops_used_this_month.toLocaleString()}
-              <span className={styles.statMax}> / {account.ops_limit.toLocaleString()}</span>
-            </span>
-            <div className={styles.progressTrack}>
-              <div className={styles.progressFill} style={{ width: `${usagePct}%` }} data-warning={usagePct > 80} />
+        <motion.div
+          className={styles.grid}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>Usage this month</h3>
+              <span className={styles.cardIcon}>📊</span>
             </div>
-            <span className={styles.statHint}>{usagePct}% used</span>
-          </div>
+            <div className={styles.bigStat}>
+              {account.ops_used_this_month.toLocaleString()}
+              <small>/ {account.ops_limit.toLocaleString()}</small>
+            </div>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: `${usagePercent}%` }} />
+            </div>
+            <p className={styles.progressLabel}>{usagePercent.toFixed(1)}% used</p>
+          </section>
 
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Ops remaining</span>
-            <span className={styles.statValue}>{remainingOps.toLocaleString()}</span>
-            <span className={styles.statHint}>Resets monthly</span>
-          </div>
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>Current plan</h3>
+              <span className={styles.cardIcon}>✨</span>
+            </div>
+            <div className={styles.planBadge}>
+              {account.plan}
+              {account.plan === 'free' && <span className={styles.freeBadge}>Free Forever</span>}
+            </div>
+            <a className={styles.link} href="/#pricing">Upgrade plan →</a>
+          </section>
 
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Active keys</span>
-            <span className={styles.statValue}>{account.keys_count}</span>
-            <span className={styles.statHint}>Across your account</span>
-          </div>
-
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Member since</span>
-            <span className={styles.statValue}>{account.member_since}</span>
-            <span className={styles.statHint}>{account.email}</span>
-          </div>
-        </div>
-
-        <div className={styles.layoutGrid}>
-          <section className={styles.sectionWide}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>API keys</h2>
-                <p className={styles.sectionCopy}>Create dedicated keys per project and revoke them when you rotate infrastructure.</p>
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>Account</h3>
+              <span className={styles.cardIcon}>👤</span>
+            </div>
+            <div className={styles.infoGrid}>
+              <div className={styles.infoItem}>
+                <label>Email</label>
+                <p>{account.email}</p>
               </div>
+              <div className={styles.infoItem}>
+                <label>Member Since</label>
+                <p>{new Date(account.member_since).toLocaleDateString()}</p>
+              </div>
+              <div className={styles.infoItem}>
+                <label>API Keys</label>
+                <p>{account.keys_count}</p>
+              </div>
+              <div className={styles.infoItem}>
+                <label>Credits</label>
+                <p>{account.credits.toLocaleString()}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.cardWide}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>API Keys</h3>
               <button
-                className={styles.primaryAction}
+                className={styles.primaryBtn}
+                type="button"
                 onClick={() => {
                   setShowCreate((current) => !current)
                   setNewKeyResult(null)
@@ -291,34 +284,34 @@ export default function Dashboard() {
             <AnimatePresence>
               {showCreate && (
                 <motion.div
-                  className={styles.createPanel}
+                  className={styles.createBox}
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.22 }}
                 >
                   {!newKeyResult ? (
-                    <form onSubmit={handleCreateKey} className={styles.inlineForm}>
+                    <form onSubmit={handleCreateKey} className={styles.createForm}>
                       <input
-                        type="text"
                         className={styles.input}
-                        placeholder="Key name, for example production-api or staging-bot"
+                        type="text"
+                        placeholder="Key name, for example production-api"
                         value={newKeyName}
                         onChange={(e) => setNewKeyName(e.target.value)}
                       />
-                      <button className={styles.primaryAction} type="submit" disabled={creatingKey}>
+                      <button className={styles.primaryBtn} type="submit" disabled={creatingKey}>
                         {creatingKey ? 'Creating...' : 'Create key'}
                       </button>
                     </form>
                   ) : (
-                    <div className={styles.newKeyCard}>
+                    <div className={styles.newKeyBox}>
                       <div>
-                        <span className={styles.newKeyLabel}>Save this key now</span>
-                        <p className={styles.newKeyText}>It will not be shown again after you leave this panel.</p>
+                        <p className={styles.newKeyTitle}>Save this key now</p>
+                        <p className={styles.newKeyMeta}>It will not be shown again after you close this panel.</p>
                       </div>
-                      <div className={styles.keyBlock}>
-                        <code className={styles.keyText}>{newKeyResult.api_key}</code>
-                        <CopyBtn text={newKeyResult.api_key} label="Copy" />
+                      <div className={styles.newKeyActions}>
+                        <code>{newKeyResult.api_key}</code>
+                        <CopyBtn text={newKeyResult.api_key} />
                       </div>
                     </div>
                   )}
@@ -326,110 +319,54 @@ export default function Dashboard() {
               )}
             </AnimatePresence>
 
-            <div className={styles.keysTable}>
-              <div className={styles.keysHeader}>
-                <span>Prefix</span>
-                <span>Name</span>
-                <span>Status</span>
-                <span>Created</span>
-                <span></span>
-              </div>
-
-              {apiKeys.length === 0 ? (
-                <p className={styles.emptyState}>No keys found yet.</p>
-              ) : (
-                apiKeys.map((key) => (
-                  <div key={key.key_prefix} className={styles.keyRow} data-inactive={!key.is_active}>
-                    <span className={styles.keyPrefix}><code>{key.key_prefix}</code></span>
-                    <span className={styles.keyName}>{key.name || 'Default key'}</span>
-                    <span className={styles.keyStatus}>
-                      <span className={styles.statusDot} data-active={key.is_active} />
-                      {key.is_active ? 'Active' : 'Revoked'}
-                    </span>
-                    <span className={styles.keyDate}>{new Date(key.created_at).toLocaleDateString()}</span>
-                    <span className={styles.keyAction}>
-                      {key.is_active && (
-                        <button
-                          className={styles.revokeBtn}
-                          onClick={() => handleDeleteKey(key.key_prefix)}
-                          disabled={deletingPrefix === key.key_prefix}
-                        >
-                          {deletingPrefix === key.key_prefix ? 'Working...' : 'Revoke'}
-                        </button>
-                      )}
-                    </span>
+            {apiKeys.length === 0 ? (
+              <p className={styles.empty}>No API keys yet</p>
+            ) : (
+              <div className={styles.keysList}>
+                {apiKeys.map((key) => (
+                  <div key={key.key_prefix} className={styles.keyItem}>
+                    <div>
+                      <code>{key.key_prefix}</code>
+                      <span className={styles.keyMeta}>
+                        {key.name || 'Default key'} • Created {new Date(key.created_at).toLocaleDateString()} • {key.is_active ? 'Active' : 'Revoked'}
+                      </span>
+                    </div>
+                    {key.is_active ? (
+                      <button
+                        className={styles.dangerBtn}
+                        type="button"
+                        onClick={() => handleDeleteKey(key.key_prefix)}
+                        disabled={deletingPrefix === key.key_prefix}
+                      >
+                        {deletingPrefix === key.key_prefix ? 'Revoking...' : 'Revoke'}
+                      </button>
+                    ) : (
+                      <span className={styles.revokedLabel}>Revoked</span>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
 
-          <section className={styles.stackColumn}>
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionTitle}>Current plan</h2>
-              <div className={styles.planPanel}>
-                <span className={styles.planName}>{account.plan}</span>
-                <span className={styles.planMeta}>Free forever up to {account.ops_limit.toLocaleString()} ops per month.</span>
-              </div>
-              <a className={styles.inlineLink} href="/#pricing">See pricing →</a>
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>Quick Links</h3>
+              <span className={styles.cardIcon}>🔗</span>
             </div>
-
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionTitle}>Account</h2>
-              <dl className={styles.accountGrid}>
-                <div>
-                  <dt>Email</dt>
-                  <dd>{account.email}</dd>
-                </div>
-                <div>
-                  <dt>Member since</dt>
-                  <dd>{new Date(account.member_since).toLocaleDateString()}</dd>
-                </div>
-                <div>
-                  <dt>Credits</dt>
-                  <dd>{account.credits.toLocaleString()}</dd>
-                </div>
-                <div>
-                  <dt>Keys</dt>
-                  <dd>{account.keys_count}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionTitle}>Quick links</h2>
-              <div className={styles.linksList}>
-                <a href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">API documentation</a>
-                <a href="/benchmark">Benchmark results</a>
-                <a href="/roadmap">Roadmap</a>
-                <a href="https://github.com/patelyash2511/rec0" target="_blank" rel="noopener noreferrer">GitHub repository</a>
-              </div>
+            <div className={styles.linksList}>
+              <a href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">
+                📚 API Documentation
+              </a>
+              <a href="/benchmark">⚡ Benchmark Results</a>
+              <a href="/roadmap">🗺️ Performance Roadmap</a>
+              <a href="https://github.com/patelyash2511/rec0" target="_blank" rel="noopener noreferrer">
+                ⌥ GitHub Repository
+              </a>
             </div>
           </section>
-        </div>
-
-        <section className={styles.sectionWide}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2 className={styles.sectionTitle}>Quick start</h2>
-              <p className={styles.sectionCopy}>Use your latest live key to start storing and recalling memories immediately.</p>
-            </div>
-            <a className={styles.inlineLink} href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">Open docs →</a>
-          </div>
-          <pre className={styles.snippet}>
-            <code>{`pip install memorylayer-py
-
-from rec0 import Memory
-
-mem = Memory(api_key="YOUR_KEY_HERE")
-mem.store(user_id="user_123",
-          content="Likes dark mode")
-
-results = mem.recall(user_id="user_123",
-                     query="preferences")`}</code>
-          </pre>
-        </section>
-      </motion.div>
+        </motion.div>
+      </main>
     </div>
   )
 }
