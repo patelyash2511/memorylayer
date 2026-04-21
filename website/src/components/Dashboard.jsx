@@ -1,205 +1,211 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
+import { clearSessionToken, fetchWithSession, getSessionToken } from '../lib/auth'
 
-const API = 'https://memorylayer-production.up.railway.app/v1'
-
-function getSessionToken() {
-  const match = document.cookie.match(/(?:^|; )session_token=([^;]*)/)
-  return match ? match[1] : null
-}
-
-function clearSessionCookie() {
-  document.cookie = 'session_token=; path=/; max-age=0; SameSite=Strict; Secure'
-}
-
-/* ── tiny copy helper ──────────────────────────────────── */
 function CopyBtn({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false)
+
   const copy = useCallback(() => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }, [text])
+
   return (
     <button className={styles.copyBtn} onClick={copy} type="button">
-      {copied ? '✓ Copied!' : label}
+      {copied ? 'Copied' : label}
     </button>
   )
 }
 
-/* ── main dashboard ────────────────────────────────────── */
 export default function Dashboard() {
   const navigate = useNavigate()
   const [account, setAccount] = useState(null)
-  const [keys, setKeys] = useState([])
-  const [error, setError] = useState(null)
+  const [apiKeys, setApiKeys] = useState([])
   const [loading, setLoading] = useState(true)
-
-  const sessionToken = getSessionToken()
-
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
-  }
-
-  // auto-load on mount if session exists
-  useEffect(() => {
-    if (!sessionToken) {
-      navigate('/login')
-      return
-    }
-    loadDashboard()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // new-key form state
+  const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
   const [creatingKey, setCreatingKey] = useState(false)
   const [newKeyResult, setNewKeyResult] = useState(null)
+  const [deletingPrefix, setDeletingPrefix] = useState('')
 
-  // deleting key
-  const [deletingPrefix, setDeletingPrefix] = useState(null)
+  const handleUnauthorized = useCallback(() => {
+    clearSessionToken()
+    navigate('/login')
+  }, [navigate])
 
-  /* ── fetch account + keys ─────────────────────────────── */
-  async function loadDashboard() {
-    setError(null)
+  const loadDashboard = useCallback(async () => {
+    if (!getSessionToken()) {
+      handleUnauthorized()
+      return
+    }
+
     setLoading(true)
+    setError('')
+
     try {
-      const [meResp, keysResp] = await Promise.all([
-        fetch(`${API}/auth/me`, { headers }),
-        fetch(`${API}/auth/keys`, { headers }),
+      const [accountResponse, keysResponse] = await Promise.all([
+        fetchWithSession('/auth/me'),
+        fetchWithSession('/auth/keys'),
       ])
-      if (!meResp.ok || !keysResp.ok) {
-        if (meResp.status === 401 || keysResp.status === 401) {
-          clearSessionCookie()
-          navigate('/login')
-          return
-        }
-        setError('Something went wrong loading your account.')
-        setLoading(false)
+
+      if (accountResponse.status === 401 || keysResponse.status === 401) {
+        handleUnauthorized()
         return
       }
-      const meData = await meResp.json()
-      const keysData = await keysResp.json()
-      setAccount(meData)
-      setKeys(keysData.keys || [])
+
+      if (!accountResponse.ok || !keysResponse.ok) {
+        setError('Failed to load your dashboard. Please refresh and try again.')
+        return
+      }
+
+      const accountData = await accountResponse.json()
+      const keysData = await keysResponse.json()
+
+      setAccount(accountData)
+      setApiKeys(keysData.keys || [])
     } catch {
-      setError("Couldn't reach our servers. Check your connection.")
+      setError("Couldn't reach our servers. Check your connection and try again.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [handleUnauthorized])
 
-  /* ── create key ───────────────────────────────────────── */
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
   async function handleCreateKey(e) {
     e.preventDefault()
     if (creatingKey) return
+
     setCreatingKey(true)
     setNewKeyResult(null)
+    setError('')
+
     try {
-      const resp = await fetch(`${API}/auth/keys/create`, {
+      const response = await fetchWithSession('/auth/keys/create', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newKeyName.trim() || 'New key', mode: 'live' }),
       })
-      if (!resp.ok) {
-        setError('Failed to create key.')
-        setCreatingKey(false)
+
+      if (response.status === 401) {
+        handleUnauthorized()
         return
       }
-      const data = await resp.json()
-      setNewKeyResult(data)
-      // reload keys list
-      const keysResp = await fetch(`${API}/auth/keys`, { headers })
-      if (keysResp.ok) {
-        const keysData = await keysResp.json()
-        setKeys(keysData.keys || [])
+
+      if (!response.ok) {
+        setError('Failed to create a new API key.')
+        return
       }
+
+      const data = await response.json()
+      setNewKeyResult(data)
+      setNewKeyName('')
+      await loadDashboard()
     } catch {
-      setError('Network error creating key.')
+      setError('Network error creating a new key.')
     } finally {
       setCreatingKey(false)
     }
   }
 
-  /* ── delete key ───────────────────────────────────────── */
   async function handleDeleteKey(prefix) {
     setDeletingPrefix(prefix)
-    setError(null)
+    setError('')
+
     try {
-      const resp = await fetch(`${API}/auth/keys/${encodeURIComponent(prefix)}`, {
+      const response = await fetchWithSession(`/auth/keys/${encodeURIComponent(prefix)}`, {
         method: 'DELETE',
-        headers,
       })
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
+
+      if (response.status === 401) {
+        handleUnauthorized()
+        return
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
         if (data?.detail?.error === 'cannot_delete_last_key') {
           setError("Can't revoke your last active key. Create a new one first.")
         } else {
           setError('Failed to revoke key.')
         }
-        setDeletingPrefix(null)
         return
       }
-      // reload
-      const keysResp = await fetch(`${API}/auth/keys`, { headers })
-      if (keysResp.ok) {
-        const keysData = await keysResp.json()
-        setKeys(keysData.keys || [])
-      }
+
+      await loadDashboard()
     } catch {
       setError('Network error revoking key.')
     } finally {
-      setDeletingPrefix(null)
+      setDeletingPrefix('')
     }
   }
 
-  /* ── loading / redirect state ───────────────────────────── */
-  if (!account) {
+  async function handleSignOut() {
+    try {
+      await fetchWithSession('/auth/logout', { method: 'POST' })
+    } catch {
+      // Ignore logout failures and clear the local session anyway.
+    }
+
+    clearSessionToken()
+    navigate('/login')
+  }
+
+  if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.orb1} />
-        <div className={styles.orb2} />
+        <div className={styles.orbPrimary} />
+        <div className={styles.orbSecondary} />
+        <div className={styles.gridGlow} />
         <motion.div
-          className={styles.card}
+          className={styles.loadingPanel}
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <h1 className={styles.heading}>Dashboard</h1>
-          {loading ? (
-            <p className={styles.sub}>Loading your account…</p>
-          ) : error ? (
-            <>
-              <motion.div
-                className={styles.error}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                {error}
-              </motion.div>
-              <p className={styles.footerLink}>
-                <Link to="/login">Back to sign in</Link>
-              </p>
-            </>
-          ) : null}
+          <div className={styles.skeletonHero} />
+          <div className={styles.skeletonRow} />
+          <div className={styles.skeletonGrid}>
+            <span />
+            <span />
+            <span />
+          </div>
         </motion.div>
       </div>
     )
   }
 
-  /* ── dashboard view ───────────────────────────────────── */
+  if (!account) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.orbPrimary} />
+        <div className={styles.orbSecondary} />
+        <div className={styles.gridGlow} />
+        <div className={styles.loadingPanel}>
+          <h1 className={styles.dashboardTitle}>Dashboard unavailable</h1>
+          <p className={styles.headerSubtitle}>{error || 'We could not load your account right now.'}</p>
+        </div>
+      </div>
+    )
+  }
+
   const usagePct = account.ops_limit
     ? Math.min(100, Math.round((account.ops_used_this_month / account.ops_limit) * 100))
     : 0
+  const remainingOps = Math.max(0, (account.ops_limit || 0) - (account.ops_used_this_month || 0))
 
   return (
     <div className={styles.page}>
-      <div className={styles.orb1} />
-      <div className={styles.orb2} />
+      <div className={styles.orbPrimary} />
+      <div className={styles.orbSecondary} />
+      <div className={styles.gridGlow} />
 
       <motion.div
         className={styles.dashboard}
@@ -207,14 +213,19 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        {/* ── Account header ──────────────────────────────── */}
-        <div className={styles.accountHeader}>
-          <div>
-            <h1 className={styles.heading}>Dashboard</h1>
-            <p className={styles.accountEmail}>{account.email}</p>
+        <header className={styles.heroCard}>
+          <div className={styles.heroCopy}>
+            <span className={styles.heroEyebrow}>Authenticated session</span>
+            <h1 className={styles.dashboardTitle}>Dashboard</h1>
+            <p className={styles.headerSubtitle}>
+              Welcome back, {account.email.split('@')[0]}. Monitor monthly usage, manage API keys, and ship against the live platform.
+            </p>
           </div>
-          <div className={styles.planBadge}>{account.plan}</div>
-        </div>
+          <div className={styles.heroActions}>
+            <span className={styles.planBadge}>{account.plan} plan</span>
+            <button className={styles.ghostAction} onClick={handleSignOut}>Sign out</button>
+          </div>
+        </header>
 
         {error && (
           <motion.div
@@ -226,140 +237,185 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* ── Usage stats ─────────────────────────────────── */}
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Ops this month</span>
+            <span className={styles.statLabel}>Usage this month</span>
             <span className={styles.statValue}>
               {account.ops_used_this_month.toLocaleString()}
               <span className={styles.statMax}> / {account.ops_limit.toLocaleString()}</span>
             </span>
             <div className={styles.progressTrack}>
-              <div
-                className={styles.progressFill}
-                style={{ width: `${usagePct}%` }}
-                data-warning={usagePct > 80}
-              />
+              <div className={styles.progressFill} style={{ width: `${usagePct}%` }} data-warning={usagePct > 80} />
             </div>
+            <span className={styles.statHint}>{usagePct}% used</span>
           </div>
+
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Plan</span>
-            <span className={styles.statValue} style={{ textTransform: 'capitalize' }}>
-              {account.plan}
-            </span>
+            <span className={styles.statLabel}>Ops remaining</span>
+            <span className={styles.statValue}>{remainingOps.toLocaleString()}</span>
+            <span className={styles.statHint}>Resets monthly</span>
           </div>
+
           <div className={styles.statCard}>
             <span className={styles.statLabel}>Active keys</span>
             <span className={styles.statValue}>{account.keys_count}</span>
+            <span className={styles.statHint}>Across your account</span>
           </div>
+
           <div className={styles.statCard}>
             <span className={styles.statLabel}>Member since</span>
             <span className={styles.statValue}>{account.member_since}</span>
+            <span className={styles.statHint}>{account.email}</span>
           </div>
         </div>
 
-        {/* ── API Keys section ────────────────────────────── */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>API Keys</h2>
-            <button
-              className={styles.createBtn}
-              onClick={() => { setShowCreate(!showCreate); setNewKeyResult(null); setNewKeyName('') }}
-            >
-              {showCreate ? 'Cancel' : '+ New key'}
-            </button>
-          </div>
-
-          {/* New key form */}
-          <AnimatePresence>
-            {showCreate && (
-              <motion.div
-                className={styles.createForm}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                {!newKeyResult ? (
-                  <form onSubmit={handleCreateKey} className={styles.inlineForm}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      placeholder="Key name (e.g. staging, bot-v2)"
-                      value={newKeyName}
-                      onChange={(e) => setNewKeyName(e.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      className={styles.submit}
-                      disabled={creatingKey}
-                      style={{ flex: 'none', width: 'auto', padding: '12px 24px' }}
-                    >
-                      {creatingKey ? 'Creating…' : 'Create key'}
-                    </button>
-                  </form>
-                ) : (
-                  <div className={styles.newKeyResult}>
-                    <p className={styles.newKeyLabel}>
-                      New key created — <strong>save it now</strong>, we cannot show it again:
-                    </p>
-                    <div className={styles.keyBlock}>
-                      <code className={styles.keyText}>{newKeyResult.api_key}</code>
-                      <CopyBtn text={newKeyResult.api_key} label="Copy" />
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Keys table */}
-          <div className={styles.keysTable}>
-            <div className={styles.keysHeader}>
-              <span>Prefix</span>
-              <span>Name</span>
-              <span>Status</span>
-              <span>Created</span>
-              <span></span>
-            </div>
-            {keys.map((k) => (
-              <div key={k.key_prefix} className={styles.keyRow} data-inactive={!k.is_active}>
-                <span className={styles.keyPrefix}>
-                  <code>{k.key_prefix}</code>
-                </span>
-                <span className={styles.keyName}>{k.name || '—'}</span>
-                <span>
-                  <span
-                    className={styles.statusDot}
-                    data-active={k.is_active}
-                  />
-                  {k.is_active ? 'Active' : 'Revoked'}
-                </span>
-                <span className={styles.keyDate}>
-                  {k.created_at ? new Date(k.created_at).toLocaleDateString() : '—'}
-                </span>
-                <span>
-                  {k.is_active && (
-                    <button
-                      className={styles.revokeBtn}
-                      onClick={() => handleDeleteKey(k.key_prefix)}
-                      disabled={deletingPrefix === k.key_prefix}
-                    >
-                      {deletingPrefix === k.key_prefix ? '…' : 'Revoke'}
-                    </button>
-                  )}
-                </span>
+        <div className={styles.layoutGrid}>
+          <section className={styles.sectionWide}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <h2 className={styles.sectionTitle}>API keys</h2>
+                <p className={styles.sectionCopy}>Create dedicated keys per project and revoke them when you rotate infrastructure.</p>
               </div>
-            ))}
-            {keys.length === 0 && (
-              <p className={styles.emptyState}>No keys found.</p>
-            )}
-          </div>
+              <button
+                className={styles.primaryAction}
+                onClick={() => {
+                  setShowCreate((current) => !current)
+                  setNewKeyResult(null)
+                  setNewKeyName('')
+                }}
+              >
+                {showCreate ? 'Close' : 'Create new key'}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showCreate && (
+                <motion.div
+                  className={styles.createPanel}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  {!newKeyResult ? (
+                    <form onSubmit={handleCreateKey} className={styles.inlineForm}>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        placeholder="Key name, for example production-api or staging-bot"
+                        value={newKeyName}
+                        onChange={(e) => setNewKeyName(e.target.value)}
+                      />
+                      <button className={styles.primaryAction} type="submit" disabled={creatingKey}>
+                        {creatingKey ? 'Creating...' : 'Create key'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className={styles.newKeyCard}>
+                      <div>
+                        <span className={styles.newKeyLabel}>Save this key now</span>
+                        <p className={styles.newKeyText}>It will not be shown again after you leave this panel.</p>
+                      </div>
+                      <div className={styles.keyBlock}>
+                        <code className={styles.keyText}>{newKeyResult.api_key}</code>
+                        <CopyBtn text={newKeyResult.api_key} label="Copy" />
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className={styles.keysTable}>
+              <div className={styles.keysHeader}>
+                <span>Prefix</span>
+                <span>Name</span>
+                <span>Status</span>
+                <span>Created</span>
+                <span></span>
+              </div>
+
+              {apiKeys.length === 0 ? (
+                <p className={styles.emptyState}>No keys found yet.</p>
+              ) : (
+                apiKeys.map((key) => (
+                  <div key={key.key_prefix} className={styles.keyRow} data-inactive={!key.is_active}>
+                    <span className={styles.keyPrefix}><code>{key.key_prefix}</code></span>
+                    <span className={styles.keyName}>{key.name || 'Default key'}</span>
+                    <span className={styles.keyStatus}>
+                      <span className={styles.statusDot} data-active={key.is_active} />
+                      {key.is_active ? 'Active' : 'Revoked'}
+                    </span>
+                    <span className={styles.keyDate}>{new Date(key.created_at).toLocaleDateString()}</span>
+                    <span className={styles.keyAction}>
+                      {key.is_active && (
+                        <button
+                          className={styles.revokeBtn}
+                          onClick={() => handleDeleteKey(key.key_prefix)}
+                          disabled={deletingPrefix === key.key_prefix}
+                        >
+                          {deletingPrefix === key.key_prefix ? 'Working...' : 'Revoke'}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className={styles.stackColumn}>
+            <div className={styles.sectionCard}>
+              <h2 className={styles.sectionTitle}>Current plan</h2>
+              <div className={styles.planPanel}>
+                <span className={styles.planName}>{account.plan}</span>
+                <span className={styles.planMeta}>Free forever up to {account.ops_limit.toLocaleString()} ops per month.</span>
+              </div>
+              <a className={styles.inlineLink} href="/#pricing">See pricing →</a>
+            </div>
+
+            <div className={styles.sectionCard}>
+              <h2 className={styles.sectionTitle}>Account</h2>
+              <dl className={styles.accountGrid}>
+                <div>
+                  <dt>Email</dt>
+                  <dd>{account.email}</dd>
+                </div>
+                <div>
+                  <dt>Member since</dt>
+                  <dd>{new Date(account.member_since).toLocaleDateString()}</dd>
+                </div>
+                <div>
+                  <dt>Credits</dt>
+                  <dd>{account.credits.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Keys</dt>
+                  <dd>{account.keys_count}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className={styles.sectionCard}>
+              <h2 className={styles.sectionTitle}>Quick links</h2>
+              <div className={styles.linksList}>
+                <a href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">API documentation</a>
+                <a href="/benchmark">Benchmark results</a>
+                <a href="/roadmap">Roadmap</a>
+                <a href="https://github.com/patelyash2511/rec0" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* ── Quickstart reminder ─────────────────────────── */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Quick start</h2>
+        <section className={styles.sectionWide}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Quick start</h2>
+              <p className={styles.sectionCopy}>Use your latest live key to start storing and recalling memories immediately.</p>
+            </div>
+            <a className={styles.inlineLink} href="https://memorylayer-production.up.railway.app/docs" target="_blank" rel="noopener noreferrer">Open docs →</a>
+          </div>
           <pre className={styles.snippet}>
             <code>{`pip install memorylayer-py
 
@@ -372,33 +428,7 @@ mem.store(user_id="user_123",
 results = mem.recall(user_id="user_123",
                      query="preferences")`}</code>
           </pre>
-        </div>
-
-        {/* ── Footer links ────────────────────────────────── */}
-        <div className={styles.dashFooter}>
-          <a
-            href="https://memorylayer-production.up.railway.app/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            API docs
-          </a>
-          <a href="https://github.com/patelyash2511/rec0" target="_blank" rel="noopener noreferrer">
-            GitHub
-          </a>
-          <button
-            className={styles.logoutBtn}
-            onClick={async () => {
-              try {
-                await fetch(`${API}/auth/logout`, { method: 'POST', headers })
-              } catch { /* ignore */ }
-              clearSessionCookie()
-              navigate('/login')
-            }}
-          >
-            Sign out
-          </button>
-        </div>
+        </section>
       </motion.div>
     </div>
   )

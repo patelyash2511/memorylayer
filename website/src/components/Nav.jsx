@@ -1,26 +1,89 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ThemeToggle from './ThemeToggle'
 import styles from './Nav.module.css'
+import { checkAuthStatus, clearSessionToken, fetchWithSession, getSessionToken } from '../lib/auth'
 
 const links = [
-  { label: 'Features', href: '#features' },
-  { label: 'Use Cases', href: '#usecases' },
-  { label: 'Compare', href: '#compare' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Use Cases', href: '/#usecases' },
+  { label: 'Compare', href: '/#compare' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Docs', href: 'https://memorylayer-production.up.railway.app/docs', external: true },
 ]
 
 export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 30)
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function refreshAuthState() {
+      setLoading(true)
+      const loggedIn = await checkAuthStatus()
+      if (!cancelled) {
+        setIsLoggedIn(loggedIn)
+        setLoading(false)
+      }
+    }
+
+    refreshAuthState()
+
+    const syncAuthState = () => {
+      refreshAuthState()
+    }
+
+    window.addEventListener('authchange', syncAuthState)
+    window.addEventListener('focus', syncAuthState)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('authchange', syncAuthState)
+      window.removeEventListener('focus', syncAuthState)
+    }
+  }, [location.pathname])
+
+  async function handleSignOut() {
+    try {
+      if (getSessionToken()) {
+        await fetchWithSession('/auth/logout', { method: 'POST' })
+      }
+    } catch {
+      // Ignore logout network failures and clear local session anyway.
+    }
+
+    clearSessionToken()
+    setIsLoggedIn(false)
+    setMobileOpen(false)
+    navigate('/')
+  }
+
+  function handleDashboard() {
+    setMobileOpen(false)
+    navigate('/dashboard')
+  }
+
+  function handleLogin() {
+    setMobileOpen(false)
+    onSignin()
+  }
+
+  function handleSignup() {
+    setMobileOpen(false)
+    onCTA()
+  }
 
   return (
     <>
@@ -45,8 +108,19 @@ export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
 
         <div className={styles.cta}>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          <button className={styles.ghost} onClick={onSignin}>Sign in</button>
-          <button className={styles.pill} onClick={onCTA}>Start free →</button>
+          {loading ? (
+            <div className={styles.skeleton} aria-hidden="true" />
+          ) : isLoggedIn ? (
+            <>
+              <button className={styles.ghost} onClick={handleDashboard}>Dashboard</button>
+              <button className={styles.pillSecondary} onClick={handleSignOut}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <button className={styles.ghost} onClick={handleLogin}>Sign in</button>
+              <button className={styles.pill} onClick={handleSignup}>Sign up →</button>
+            </>
+          )}
           <button
             className={styles.hamburger}
             onClick={() => setMobileOpen(v => !v)}
@@ -71,12 +145,23 @@ export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
             {links.map((l) => (
               <a key={l.label} href={l.href} onClick={() => setMobileOpen(false)}>{l.label}</a>
             ))}
-            <button className={styles.ghost} onClick={() => { onSignin(); setMobileOpen(false) }}>
-              Sign in
-            </button>
-            <button className={styles.pill} style={{ marginTop: 16 }} onClick={() => { onCTA(); setMobileOpen(false) }}>
-              Start free →
-            </button>
+            {loading ? (
+              <div className={styles.skeletonMobile} aria-hidden="true" />
+            ) : isLoggedIn ? (
+              <>
+                <button className={styles.ghostMobile} onClick={handleDashboard}>Dashboard</button>
+                <button className={styles.pill} style={{ marginTop: 16 }} onClick={handleSignOut}>Sign out</button>
+              </>
+            ) : (
+              <>
+                <button className={styles.ghostMobile} onClick={handleLogin}>
+                  Sign in
+                </button>
+                <button className={styles.pill} style={{ marginTop: 16 }} onClick={handleSignup}>
+                  Sign up →
+                </button>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

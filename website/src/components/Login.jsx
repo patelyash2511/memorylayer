@@ -1,126 +1,201 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
+import authStyles from './Auth.module.css'
 import styles from './Login.module.css'
+import { API_BASE, setSessionToken } from '../lib/auth'
 
-const API_URL =
-  'https://memorylayer-production.up.railway.app/v1/auth/login'
+const API_URL = `${API_BASE}/auth/login`
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+
+  function validateField(field, value) {
+    switch (field) {
+      case 'email': {
+        if (!value.trim()) return 'Email is required.'
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(value.trim())) return 'Enter a valid email address.'
+        return ''
+      }
+      case 'password':
+        if (!value) return 'Password is required.'
+        return ''
+      default:
+        return ''
+    }
+  }
+
+  function handleChange(field, value) {
+    setFormData((current) => ({ ...current, [field]: value }))
+    setErrors((current) => {
+      const nextErrors = { ...current }
+      if (nextErrors[field]) {
+        const message = validateField(field, value)
+        if (message) {
+          nextErrors[field] = message
+        } else {
+          delete nextErrors[field]
+        }
+      }
+      if (nextErrors.submit) {
+        delete nextErrors.submit
+      }
+      return nextErrors
+    })
+  }
+
+  function handleBlur(field) {
+    const message = validateField(field, formData[field])
+    setErrors((current) => {
+      const nextErrors = { ...current }
+      if (message) {
+        nextErrors[field] = message
+      } else {
+        delete nextErrors[field]
+      }
+      return nextErrors
+    })
+  }
+
+  function validateAll() {
+    const nextErrors = {}
+    for (const field of Object.keys(formData)) {
+      const message = validateField(field, formData[field])
+      if (message) {
+        nextErrors[field] = message
+      }
+    }
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (loading) return
 
-    setError(null)
+    if (!validateAll()) {
+      return
+    }
+
     setLoading(true)
+    setErrors((current) => {
+      const nextErrors = { ...current }
+      delete nextErrors.submit
+      return nextErrors
+    })
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
       })
 
       if (!response.ok) {
         if (response.status === 401) {
-          setError('Invalid email or password.')
+          setErrors((current) => ({ ...current, submit: 'Invalid email or password.' }))
         } else if (response.status === 422) {
-          setError('Please enter a valid email address.')
+          setErrors((current) => ({ ...current, submit: 'Please enter a valid email address.' }))
+        } else if (response.status === 500) {
+          setErrors((current) => ({ ...current, submit: 'Our auth service is still being updated. Try again shortly.' }))
         } else {
-          setError('Something went wrong. Please try again.')
+          setErrors((current) => ({ ...current, submit: 'Login failed. Please try again.' }))
         }
-        setLoading(false)
         return
       }
 
       const result = await response.json()
-      document.cookie = `session_token=${result.session_token}; path=/; max-age=2592000; SameSite=Strict; Secure`
+      setSessionToken(result.session_token)
       navigate('/dashboard')
     } catch {
-      setError("Couldn't reach our servers. Check your connection and try again.")
+      setErrors((current) => ({
+        ...current,
+        submit: "Couldn't reach our servers. Check your connection and try again.",
+      }))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.orb1} />
-      <div className={styles.orb2} />
+    <div className={authStyles.page}>
+      <div className={authStyles.orbPrimary} />
+      <div className={authStyles.orbSecondary} />
+      <div className={authStyles.gridGlow} />
 
       <motion.div
-        className={styles.card}
+        className={authStyles.card}
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        <h1 className={styles.heading}>Welcome back</h1>
-        <p className={styles.sub}>
-          Sign in to access your dashboard, keys, and usage stats.
-        </p>
+        <div className={authStyles.eyebrow}>Account access</div>
+        <h1 className={authStyles.heading}>Welcome back</h1>
+        <p className={authStyles.subtle}>Sign in to manage keys, usage, and account activity from your dashboard.</p>
 
-        {error && (
+        {errors.submit && (
           <motion.div
-            className={styles.error}
+            className={authStyles.errorBanner}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
           >
-            {error}
+            {errors.submit}
           </motion.div>
         )}
 
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <label className={styles.label}>
-            Email
+        <form className={authStyles.form} onSubmit={handleSubmit} noValidate>
+          <label className={authStyles.field}>
+            <span className={authStyles.fieldLabel}>Email</span>
             <input
               type="email"
-              className={styles.input}
+              className={errors.email ? `${authStyles.input} ${authStyles.inputError}` : authStyles.input}
               placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              value={formData.email}
+              onChange={(e) => handleChange('email', e.target.value)}
+              onBlur={() => handleBlur('email')}
               autoComplete="email"
+              autoFocus
             />
+            {errors.email && <span className={authStyles.errorText}>{errors.email}</span>}
           </label>
 
-          <label className={styles.label}>
-            Password
+          <label className={authStyles.field}>
+            <span className={authStyles.inlineLabel}>
+              <span className={authStyles.fieldLabel}>Password</span>
+              <a className={styles.forgotLink} href="mailto:yash@rec0.ai?subject=Password%20reset">
+                Forgot?
+              </a>
+            </span>
             <input
               type="password"
-              className={styles.input}
+              className={errors.password ? `${authStyles.input} ${authStyles.inputError}` : authStyles.input}
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              value={formData.password}
+              onChange={(e) => handleChange('password', e.target.value)}
+              onBlur={() => handleBlur('password')}
               autoComplete="current-password"
-              minLength={8}
             />
+            {errors.password && <span className={authStyles.errorText}>{errors.password}</span>}
           </label>
 
           <button
             type="submit"
-            className={styles.submit}
-            disabled={loading || !email.trim() || !password}
+            className={authStyles.submitBtn}
+            disabled={loading}
           >
-            {loading ? (
-              <>
-                <span className={styles.spinner} />
-                Signing in…
-              </>
-            ) : (
-              'Sign in →'
-            )}
+            {loading ? 'Signing in...' : 'Sign in →'}
           </button>
         </form>
 
-        <p className={styles.signupLink}>
+        <p className={authStyles.footerText}>
           Don't have an account?{' '}
           <Link to="/signup">Sign up free</Link>
         </p>

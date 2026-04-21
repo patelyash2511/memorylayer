@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import useLenis from './hooks/useLenis'
 import Nav from './components/Nav'
 import Hero from './components/Hero'
@@ -63,6 +63,7 @@ function LandingPage({ onCTA }) {
 
 export default function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const goSignup = useCallback(() => navigate('/signup'), [navigate])
   const goSignin = useCallback(() => navigate('/login'), [navigate])
   useLenis()
@@ -78,10 +79,12 @@ export default function App() {
     setTheme(t => t === 'dark' ? 'light' : 'dark')
   }, [])
 
+  const showMarketingChrome = location.pathname === '/'
+
   return (
     <>
       <Nav onCTA={goSignup} onSignin={goSignin} theme={theme} onToggleTheme={toggleTheme} />
-      <BetaBanner />
+      {showMarketingChrome && <BetaBanner />}
       <Routes>
         <Route path="/" element={<LandingPage onCTA={goSignup} />} />
         <Route path="/signup" element={<Signup />} />
@@ -90,7 +93,7 @@ export default function App() {
         <Route path="/benchmark" element={<Benchmark />} />
         <Route path="/roadmap" element={<Roadmap />} />
       </Routes>
-      <Footer />
+      {showMarketingChrome && <Footer />}
     </>
   )
 }
