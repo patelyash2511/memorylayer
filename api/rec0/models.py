@@ -77,6 +77,7 @@ class ApiKey(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     key_hash = Column(Text, unique=True, nullable=False)
+    encrypted_key = Column(Text, nullable=True)
     key_prefix = Column(String(64), nullable=False)
     name = Column(Text, default="Default key", nullable=False)
     last_used_at = Column(DateTime(timezone=True), nullable=True)

@@ -115,7 +115,7 @@ class RegisterResponse(BaseModel):
     api_key: str
     key_prefix: str
     session_token: str
-    warning: str = "Save this key now. We cannot show it again."
+    warning: str = "Save this key now. You can reveal it later from the dashboard while signed in."
     docs: str = "https://docs.rec0.ai/quickstart"
 
 
@@ -128,7 +128,7 @@ class KeyCreateResponse(BaseModel):
     api_key: str
     key_prefix: str
     name: str
-    warning: str = "Save this key now. We cannot show it again."
+    warning: str = "Save this key now. You can reveal it later from the dashboard while signed in."
 
 
 class KeyInfo(BaseModel):
@@ -146,6 +146,19 @@ class KeyListResponse(BaseModel):
     total: int
 
 
+class AccountKeyInfo(BaseModel):
+    id: str
+    key_prefix: str
+    key: Optional[str] = None
+    name: str
+    last_used_at: Optional[datetime]
+    is_active: bool
+    created_at: datetime
+    revealable: bool = False
+
+    model_config = {"from_attributes": True}
+
+
 class AccountMeResponse(BaseModel):
     account_id: str
     email: str
@@ -155,6 +168,7 @@ class AccountMeResponse(BaseModel):
     credits: int
     keys_count: int
     member_since: str
+    keys: List[AccountKeyInfo] = []
 
 
 class LoginRequest(BaseModel):

@@ -24,7 +24,6 @@ function CopyBtn({ text, label = 'Copy' }) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const [account, setAccount] = useState(null)
-  const [apiKeys, setApiKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -32,6 +31,8 @@ export default function Dashboard() {
   const [creatingKey, setCreatingKey] = useState(false)
   const [newKeyResult, setNewKeyResult] = useState(null)
   const [deletingPrefix, setDeletingPrefix] = useState('')
+  const [visibleKeys, setVisibleKeys] = useState(new Set())
+  const [copiedKeys, setCopiedKeys] = useState(new Set())
 
   const handleUnauthorized = useCallback(() => {
     clearSessionToken()
@@ -48,26 +49,20 @@ export default function Dashboard() {
     setError('')
 
     try {
-      const [accountResponse, keysResponse] = await Promise.all([
-        fetchWithSession('/auth/me'),
-        fetchWithSession('/auth/keys'),
-      ])
+      const accountResponse = await fetchWithSession('/auth/me')
 
-      if (accountResponse.status === 401 || keysResponse.status === 401) {
+      if (accountResponse.status === 401) {
         handleUnauthorized()
         return
       }
 
-      if (!accountResponse.ok || !keysResponse.ok) {
+      if (!accountResponse.ok) {
         setError('Failed to load your dashboard. Please refresh and try again.')
         return
       }
 
       const accountData = await accountResponse.json()
-      const keysData = await keysResponse.json()
-
       setAccount(accountData)
-      setApiKeys(keysData.keys || [])
     } catch {
       setError("Couldn't reach our servers. Check your connection and try again.")
     } finally {
@@ -158,6 +153,46 @@ export default function Dashboard() {
     navigate('/login')
   }
 
+  function toggleKeyVisibility(keyId) {
+    setVisibleKeys((current) => {
+      const next = new Set(current)
+      if (next.has(keyId)) {
+        next.delete(keyId)
+      } else {
+        next.add(keyId)
+      }
+      return next
+    })
+  }
+
+  async function copyKey(keyValue, keyId) {
+    if (!keyValue) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(keyValue)
+      setCopiedKeys((current) => new Set(current).add(keyId))
+      setTimeout(() => {
+        setCopiedKeys((current) => {
+          const next = new Set(current)
+          next.delete(keyId)
+          return next
+        })
+      }, 2000)
+    } catch {
+      setError('Failed to copy the key to your clipboard.')
+    }
+  }
+
+  function maskKey(key) {
+    if (!key.revealable || !key.key) {
+      const prefix = key.key_prefix.replace(/\.\.\.$/, '')
+      return `${prefix}${'•'.repeat(12)}`
+    }
+    const visiblePrefix = key.key.substring(0, 16)
+    return `${visiblePrefix}${'•'.repeat(Math.max(8, key.key.length - 16))}`
+  }
+
   if (loading) {
     return <div className={styles.loading}>Loading your dashboard...</div>
   }
@@ -175,6 +210,7 @@ export default function Dashboard() {
   const usageRatio = account.ops_limit ? account.ops_used_this_month / account.ops_limit : 0
   const usagePercent = Math.min(100, usageRatio * 100)
   const welcomeName = account.email.split('@')[0]
+  const accountKeys = account.keys || []
 
   return (
     <div className={styles.container}>
@@ -256,7 +292,7 @@ export default function Dashboard() {
               </div>
               <div className={styles.infoItem}>
                 <label>API Keys</label>
-                <p>{account.keys_count}</p>
+                <p>{accountKeys.length}</p>
               </div>
               <div className={styles.infoItem}>
                 <label>Credits</label>
@@ -319,30 +355,70 @@ export default function Dashboard() {
               )}
             </AnimatePresence>
 
-            {apiKeys.length === 0 ? (
+            {accountKeys.length === 0 ? (
               <p className={styles.empty}>No API keys yet</p>
             ) : (
               <div className={styles.keysList}>
-                {apiKeys.map((key) => (
+                {accountKeys.map((key) => (
                   <div key={key.key_prefix} className={styles.keyItem}>
-                    <div>
-                      <code>{key.key_prefix}</code>
+                    <div className={styles.keyContent}>
+                      <div className={styles.keyHeader}>
+                        <span className={styles.keyName}>{key.name || 'Default key'}</span>
+                        <span className={styles.keyStatus}>
+                          {key.is_active ? (
+                            <span className={styles.statusActive}>● Active</span>
+                          ) : (
+                            <span className={styles.statusInactive}>○ Inactive</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className={styles.keyDisplay}>
+                        <code className={styles.keyCode}>
+                          {visibleKeys.has(key.id) && key.revealable ? key.key : maskKey(key)}
+                        </code>
+                      </div>
+
                       <span className={styles.keyMeta}>
-                        {key.name || 'Default key'} • Created {new Date(key.created_at).toLocaleDateString()} • {key.is_active ? 'Active' : 'Revoked'}
+                        Created {new Date(key.created_at).toLocaleDateString()}
+                        {key.last_used_at && ` · Last used ${new Date(key.last_used_at).toLocaleDateString()}`}
+                        {!key.revealable && ' · Legacy key: rotate to enable reveal and copy'}
                       </span>
                     </div>
-                    {key.is_active ? (
+                    <div className={styles.keyActions}>
                       <button
-                        className={styles.dangerBtn}
+                        className={styles.iconBtn}
                         type="button"
-                        onClick={() => handleDeleteKey(key.key_prefix)}
-                        disabled={deletingPrefix === key.key_prefix}
+                        onClick={() => toggleKeyVisibility(key.id)}
+                        disabled={!key.revealable}
+                        title={key.revealable ? (visibleKeys.has(key.id) ? 'Hide key' : 'Show key') : 'Legacy keys cannot be revealed'}
                       >
-                        {deletingPrefix === key.key_prefix ? 'Revoking...' : 'Revoke'}
+                        {visibleKeys.has(key.id) ? '🙈' : '👁️'}
                       </button>
-                    ) : (
-                      <span className={styles.revokedLabel}>Revoked</span>
-                    )}
+
+                      <button
+                        className={styles.iconBtn}
+                        type="button"
+                        onClick={() => copyKey(key.key, key.id)}
+                        disabled={!key.revealable}
+                        title={key.revealable ? 'Copy to clipboard' : 'Legacy keys cannot be copied'}
+                      >
+                        {copiedKeys.has(key.id) ? '✅' : '📋'}
+                      </button>
+
+                      {key.is_active ? (
+                        <button
+                          className={styles.dangerBtn}
+                          type="button"
+                          onClick={() => handleDeleteKey(key.key_prefix)}
+                          disabled={deletingPrefix === key.key_prefix}
+                        >
+                          {deletingPrefix === key.key_prefix ? 'Revoking...' : 'Revoke'}
+                        </button>
+                      ) : (
+                        <span className={styles.revokedLabel}>Revoked</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

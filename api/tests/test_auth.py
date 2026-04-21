@@ -56,7 +56,7 @@ def db_session():
 def client(db_session, monkeypatch):
     """TestClient with in-memory DB and no legacy keys set."""
     reset_rate_limiter()
-    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setenv("SECRET_KEY", "test-secret-for-dashboard-key-reveal")
     monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
     monkeypatch.setenv("REC0_ENV", "development")
 
@@ -76,7 +76,7 @@ def client(db_session, monkeypatch):
 def prod_client(db_session, monkeypatch):
     """TestClient simulating production environment."""
     reset_rate_limiter()
-    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setenv("SECRET_KEY", "test-secret-for-dashboard-key-reveal")
     monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
     monkeypatch.setenv("REC0_ENV", "production")
 
@@ -118,7 +118,7 @@ def test_register_success(client):
     assert data["plan"] == "free"
     assert data["api_key"].startswith("r0_live_sk_")
     assert "key_prefix" in data
-    assert data["warning"] == "Save this key now. We cannot show it again."
+    assert data["warning"] == "Save this key now. You can reveal it later from the dashboard while signed in."
     assert data["session_token"].startswith("session_")
 
 
@@ -156,6 +156,9 @@ def test_full_auth_flow(client):
     data = resp.json()
     assert data["ops_used_this_month"] == 1
     assert data["keys_count"] == 1
+    assert len(data["keys"]) == 1
+    assert data["keys"][0]["key"] == key1
+    assert data["keys"][0]["revealable"] is True
 
     # 4. Create second key
     resp = client.post(
@@ -182,6 +185,9 @@ def test_full_auth_flow(client):
     assert resp.status_code == 200
     assert resp.json()["ops_used_this_month"] == 2
     assert resp.json()["keys_count"] == 2
+    auth_me_keys = resp.json()["keys"]
+    assert len(auth_me_keys) == 2
+    assert {item["key"] for item in auth_me_keys} == {key1, key2}
 
     # 7. GET /auth/keys → see both keys
     resp = client.get("/v1/auth/keys", headers=h1)
@@ -319,6 +325,30 @@ def test_session_auth_me(client):
     resp = client.get("/v1/auth/me", headers={"X-Session-Token": token})
     assert resp.status_code == 200
     assert resp.json()["email"] == "sess@test.com"
+    assert len(resp.json()["keys"]) == 1
+
+
+def test_auth_me_returns_non_revealable_legacy_keys(db_session, monkeypatch):
+    reset_rate_limiter()
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
+    monkeypatch.setenv("REC0_ENV", "development")
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as client:
+        key = register(client, email="legacy@test.com")
+        resp = client.get("/v1/auth/me", headers={"X-API-Key": key})
+        assert resp.status_code == 200
+        legacy_key = resp.json()["keys"][0]
+        assert legacy_key["key"] is None
+        assert legacy_key["revealable"] is False
+    app.dependency_overrides.clear()
 
 
 def test_logout_invalidates_session(client):

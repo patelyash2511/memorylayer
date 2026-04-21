@@ -28,9 +28,11 @@ from sqlalchemy.orm import Session
 
 from rec0.database import get_db
 from rec0.keygen import check_api_key, generate_api_key
+from rec0.keyvault import decrypt_api_key, encrypt_api_key
 from rec0.models import Account, ApiKey, AuthSession, UsageLog
 from rec0.ratelimit import REGISTER_LIMIT, check_rate_limit
 from rec0.schemas import (
+    AccountKeyInfo,
     AccountMeResponse,
     KeyCreateRequest,
     KeyCreateResponse,
@@ -221,6 +223,7 @@ def register(
     api_key_row = ApiKey(
         account_id=account.id,
         key_hash=key_hash,
+        encrypted_key=encrypt_api_key(full_key),
         key_prefix=key_prefix,
         name="Default key",
     )
@@ -330,6 +333,7 @@ def create_key(
     api_key_row = ApiKey(
         account_id=account.id,
         key_hash=key_hash,
+        encrypted_key=encrypt_api_key(full_key),
         key_prefix=key_prefix,
         name=payload.name or "Default key",
     )
@@ -438,18 +442,20 @@ def revoke_key(
     "/auth/me",
     response_model=AccountMeResponse,
     summary="Account info and usage",
-    description="Returns your account details, current ops usage, and key count.",
+    description="Returns your account details, current ops usage, and account API keys for authenticated dashboard management.",
 )
 def me(
     account: Account = Depends(get_current_account),
     db: Session = Depends(get_db),
 ) -> AccountMeResponse:
     """Return account info for the authenticated key."""
-    keys_count = (
+    keys = (
         db.query(ApiKey)
-        .filter(ApiKey.account_id == account.id, ApiKey.is_active.is_(True))
-        .count()
+        .filter(ApiKey.account_id == account.id)
+        .order_by(ApiKey.created_at.desc())
+        .all()
     )
+    keys_count = sum(1 for key in keys if key.is_active)
     return AccountMeResponse(
         account_id=str(account.id),
         email=account.email,
@@ -459,4 +465,17 @@ def me(
         credits=account.credits or 0,
         keys_count=keys_count,
         member_since=account.created_at.strftime("%Y-%m-%d") if account.created_at else "",
+        keys=[
+            AccountKeyInfo(
+                id=str(key.id),
+                key_prefix=key.key_prefix,
+                key=decrypt_api_key(key.encrypted_key),
+                name=key.name or "Default key",
+                last_used_at=key.last_used_at,
+                is_active=key.is_active,
+                created_at=key.created_at,
+                revealable=decrypt_api_key(key.encrypted_key) is not None,
+            )
+            for key in keys
+        ],
     )

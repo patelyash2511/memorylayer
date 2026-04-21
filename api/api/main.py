@@ -43,6 +43,7 @@ def _migrate_schema() -> None:
         "ALTER TABLE memories ADD COLUMN recall_count INTEGER DEFAULT 0",
         "ALTER TABLE memories ADD COLUMN last_recalled_at TIMESTAMPTZ",
         "ALTER TABLE accounts ADD COLUMN password_hash TEXT",
+        "ALTER TABLE api_keys ADD COLUMN encrypted_key TEXT",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:

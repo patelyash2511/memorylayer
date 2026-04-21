@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from api.routes.memory import router as memory_router
 from api.routes.users import router as users_router
+from api.routes.auth import router as auth_router
 from rec0.database import Base, SessionLocal, engine
 import rec0.models  # noqa: F401 — registers all models with Base
 
@@ -38,6 +39,7 @@ def _migrate_schema() -> None:
         "ALTER TABLE memories ADD COLUMN recall_count INTEGER DEFAULT 0",
         "ALTER TABLE memories ADD COLUMN last_recalled_at TIMESTAMPTZ",
         "ALTER TABLE accounts ADD COLUMN password_hash TEXT",
+        "ALTER TABLE api_keys ADD COLUMN encrypted_key TEXT",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:
@@ -149,6 +151,7 @@ app.add_middleware(
 
 app.include_router(memory_router, prefix="/v1")
 app.include_router(users_router, prefix="/v1")
+app.include_router(auth_router, prefix="/v1")
 
 
 # ── Global error handlers ──────────────────────────────────────────────────────

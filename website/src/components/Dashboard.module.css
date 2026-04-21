@@ -330,9 +330,9 @@
 .keyItem {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1.25rem;
   background: var(--bg-secondary);
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -344,11 +344,59 @@
   border-color: #d1d5db;
 }
 
+.keyContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.keyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.keyName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.keyStatus {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.statusActive {
+  color: var(--success);
+}
+
+.statusInactive {
+  color: var(--text-tertiary);
+}
+
+.keyDisplay {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.keyCode {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  word-break: break-all;
+  user-select: all;
+}
+
 .keyMeta {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-tertiary);
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .primaryBtn {
@@ -413,6 +461,42 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-tertiary);
+}
+
+.keyActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  background: var(--bg-primary);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.iconBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.iconBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .linksList {
@@ -498,5 +582,18 @@
 
   .bigStat {
     font-size: 2rem;
+  }
+
+  .keyActions {
+    justify-content: flex-end;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--card-border);
+    width: 100%;
+  }
+
+  .keyHeader {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
