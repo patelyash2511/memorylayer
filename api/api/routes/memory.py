@@ -14,6 +14,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 import time
@@ -106,11 +107,13 @@ def verify_api_key(
 
     # Dev key in non-production
     if env != "production" and x_api_key == _DEV_KEY:
+        request.state.account_id = "dev_shared"
         return x_api_key
 
     # Legacy: plaintext SECRET_KEY (tests, backward compat)
     secret = os.environ.get("SECRET_KEY", "")
     if secret and x_api_key == secret:
+        request.state.account_id = f"legacy_secret:{hashlib.sha256(secret.encode()).hexdigest()[:16]}"
         logger.warning("Using plaintext SECRET_KEY. Register at rec0.ai for production keys.")
         return x_api_key
 
@@ -120,6 +123,7 @@ def verify_api_key(
         try:
             import bcrypt as _bcrypt
             if _bcrypt.checkpw(x_api_key.encode(), key_hash_env.encode()):
+                request.state.account_id = f"legacy_hash:{hashlib.sha256(key_hash_env.encode()).hexdigest()[:16]}"
                 return x_api_key
         except Exception:
             pass
@@ -152,6 +156,7 @@ def verify_api_key(
 
     # Attach account to request state for _track_op
     request.state.account = account
+    request.state.account_id = str(account.id)
     request.state.key_prefix = prefix
 
     return x_api_key
@@ -162,6 +167,14 @@ def _check_rate(api_key: str) -> None:
     allowed, retry_after = check_rate_limit(api_key)
     if not allowed:
         raise _rate_limit_error(retry_after)
+
+
+def _get_account_scope_id(request: Request, api_key: str) -> str:
+    account_id = getattr(request.state, "account_id", None)
+    if account_id:
+        return str(account_id)
+    # Last-resort isolation fallback for unusual auth paths.
+    return f"key:{hashlib.sha256(api_key.encode()).hexdigest()[:16]}"
 
 
 def _track_op(request: Request, db: Session) -> None:
@@ -219,12 +232,14 @@ def store_memory(
     """Store a memory with auto-generated embedding and summary."""
     _check_rate(api_key)
     _track_op(request, db)
+    account_scope_id = _get_account_scope_id(request, api_key)
 
     emb = embed(payload.content)
     emb_json = json.dumps(emb) if emb is not None else None
     summary = generate_summary(payload.content)
 
     memory = Memory(
+        account_id=account_scope_id,
         user_id=payload.user_id,
         app_id=payload.app_id,
         content=payload.content,
@@ -254,11 +269,13 @@ def recall_memories(
     """Semantic recall using fastembed ONNX local model (BAAI/bge-small-en-v1.5). No external APIs."""
     _check_rate(api_key)
     _track_op(request, db)
+    account_scope_id = _get_account_scope_id(request, api_key)
     t_start = time.monotonic()
 
     memories = (
         db.query(Memory)
         .filter(
+            Memory.account_id == account_scope_id,
             Memory.user_id == payload.user_id,
             Memory.app_id == payload.app_id,
             Memory.is_active.is_(True),
@@ -343,26 +360,28 @@ def recall_memories(
     description="Return all active memories for a user in chronological order.",
 )
 def list_memories(
+    request: Request,
     user_id: str = Query(...),
     app_id: str = Query(...),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> MemoryListResponse:
     """List all active memories for a user."""
     _check_rate(api_key)
+    account_scope_id = _get_account_scope_id(request, api_key)
 
-    memories = (
-        db.query(Memory)
-        .filter(
-            Memory.user_id == user_id,
-            Memory.app_id == app_id,
-            Memory.is_active.is_(True),
-        )
-        .order_by(Memory.created_at)
-        .all()
+    query = db.query(Memory).filter(
+        Memory.account_id == account_scope_id,
+        Memory.user_id == user_id,
+        Memory.app_id == app_id,
+        Memory.is_active.is_(True),
     )
+    total = query.count()
+    memories = query.order_by(Memory.created_at).offset(offset).limit(limit).all()
 
-    return MemoryListResponse(memories=memories, total_memories=len(memories))
+    return MemoryListResponse(memories=memories, total_memories=total)
 
 
 @router.delete(
@@ -373,13 +392,23 @@ def list_memories(
 )
 def delete_memory(
     memory_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> None:
     """Soft-delete a memory by ID (sets is_active=False)."""
     _check_rate(api_key)
+    account_scope_id = _get_account_scope_id(request, api_key)
 
-    memory = db.query(Memory).filter(Memory.id == memory_id).first()
+    memory = (
+        db.query(Memory)
+        .filter(
+            Memory.id == memory_id,
+            Memory.account_id == account_scope_id,
+            Memory.is_active.is_(True),
+        )
+        .first()
+    )
     if not memory:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

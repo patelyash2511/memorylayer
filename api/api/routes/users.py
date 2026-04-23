@@ -14,13 +14,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from rec0.database import get_db
 from rec0.models import Memory
 from rec0.schemas import UserDeleteResponse, UserExportResponse
-from api.routes.memory import _check_rate, verify_api_key
+from api.routes.memory import _check_rate, _get_account_scope_id, verify_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -38,19 +38,25 @@ router = APIRouter()
 )
 def delete_user(
     user_id: str,
+    request: Request,
     app_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> UserDeleteResponse:
-    """Hard-delete all memories for a user (GDPR right to erasure)."""
+    """Soft-delete all memories for a user (GDPR right to erasure)."""
     _check_rate(api_key)
+    account_scope_id = _get_account_scope_id(request, api_key)
 
-    query = db.query(Memory).filter(Memory.user_id == user_id)
+    query = db.query(Memory).filter(
+        Memory.account_id == account_scope_id,
+        Memory.user_id == user_id,
+        Memory.is_active.is_(True),
+    )
     if app_id:
         query = query.filter(Memory.app_id == app_id)
 
     count = query.count()
-    query.delete(synchronize_session=False)
+    query.update({"is_active": False}, synchronize_session=False)
     db.commit()
 
     logger.info("GDPR erasure: user_id=%s app_id=%s removed=%d", user_id, app_id, count)
@@ -65,14 +71,17 @@ def delete_user(
 )
 def export_user(
     user_id: str,
+    request: Request,
     app_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> UserExportResponse:
     """Export all memories for a user in portable JSON format."""
     _check_rate(api_key)
+    account_scope_id = _get_account_scope_id(request, api_key)
 
     query = db.query(Memory).filter(
+        Memory.account_id == account_scope_id,
         Memory.user_id == user_id,
         Memory.is_active.is_(True),
     )

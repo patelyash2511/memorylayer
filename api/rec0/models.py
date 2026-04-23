@@ -14,6 +14,7 @@ class Memory(Base):
     __tablename__ = "memories"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    account_id = Column(String(64), nullable=False)
     user_id = Column(String, nullable=False)
     app_id = Column(String, nullable=False)
     content = Column(Text, nullable=False)
@@ -37,6 +38,8 @@ class Memory(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     __table_args__ = (
+        Index("ix_memories_account_user_app", "account_id", "user_id", "app_id"),
+        Index("ix_memories_account_active", "account_id", "is_active"),
         Index("ix_memories_user_id", "user_id"),
         Index("ix_memories_app_id", "app_id"),
     )

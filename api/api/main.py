@@ -40,10 +40,13 @@ def _migrate_schema() -> None:
 
     new_columns = [
         "ALTER TABLE memories ADD COLUMN embedding TEXT",
+        "ALTER TABLE memories ADD COLUMN account_id TEXT",
         "ALTER TABLE memories ADD COLUMN recall_count INTEGER DEFAULT 0",
         "ALTER TABLE memories ADD COLUMN last_recalled_at TIMESTAMPTZ",
         "ALTER TABLE accounts ADD COLUMN password_hash TEXT",
         "ALTER TABLE api_keys ADD COLUMN encrypted_key TEXT",
+        "CREATE INDEX ix_memories_account_user_app ON memories(account_id, user_id, app_id)",
+        "CREATE INDEX ix_memories_account_active ON memories(account_id, is_active)",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:
