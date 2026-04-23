@@ -10,3 +10,5 @@ node_modules/
 *.whl
 *.tar.gz
 memorylayer.db
+memorylayer/
+.pytest_cache/
