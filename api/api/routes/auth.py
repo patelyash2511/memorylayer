@@ -70,31 +70,43 @@ def _create_session(account_id: str, db: Session) -> str:
     return token
 
 
-def _set_session_cookie(response: Response, token: str, request: Request) -> None:
+def _is_production(request: Request) -> bool:
+    """True when running behind an HTTPS reverse proxy (e.g. Railway).
+
+    Railway (and most PaaS proxies) terminate TLS and forward plain HTTP to
+    the container, so request.url.scheme is always 'http' inside the pod.
+    We detect production by checking X-Forwarded-Proto first, then the
+    REC0_ENV env-var as a manual override.
+    """
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    if forwarded_proto:
+        return forwarded_proto.lower() == "https"
     env = os.environ.get("REC0_ENV", "development")
-    secure_cookie = request.url.scheme == "https" or env == "production"
-    # Cross-origin frontend (e.g. Vercel) -> API (Railway) needs SameSite=None.
-    same_site = "none" if env == "production" else "strict"
+    return request.url.scheme == "https" or env == "production"
+
+
+def _set_session_cookie(response: Response, token: str, request: Request) -> None:
+    production = _is_production(request)
+    # Cross-origin frontend (Vercel) -> API (Railway) requires SameSite=None;
+    # SameSite=None is only valid with Secure=True.
     response.set_cookie(
         key=_SESSION_COOKIE,
         value=token,
         httponly=True,
-        secure=secure_cookie,
-        samesite=same_site,
+        secure=production,
+        samesite="none" if production else "strict",
         max_age=_SESSION_DAYS * 24 * 60 * 60,
         path="/",
     )
 
 
 def _clear_session_cookie(response: Response, request: Request) -> None:
-    env = os.environ.get("REC0_ENV", "development")
-    secure_cookie = request.url.scheme == "https" or env == "production"
-    same_site = "none" if env == "production" else "strict"
+    production = _is_production(request)
     response.delete_cookie(
         key=_SESSION_COOKIE,
         httponly=True,
-        secure=secure_cookie,
-        samesite=same_site,
+        secure=production,
+        samesite="none" if production else "strict",
         path="/",
     )
 
