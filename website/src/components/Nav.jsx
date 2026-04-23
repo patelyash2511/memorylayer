@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ThemeToggle from './ThemeToggle'
 import styles from './Nav.module.css'
-import { checkAuthStatus, clearSessionToken, fetchWithSession, getSessionToken } from '../lib/auth'
+import { checkAuthStatus, clearSessionToken, fetchWithSession } from '../lib/auth'
 
 const links = [
   { label: 'Features', href: '/#features' },
@@ -57,9 +57,7 @@ export default function Nav({ onCTA, onSignin, theme, onToggleTheme }) {
 
   async function handleSignOut() {
     try {
-      if (getSessionToken()) {
-        await fetchWithSession('/auth/logout', { method: 'POST' })
-      }
+      await fetchWithSession('/auth/logout', { method: 'POST' })
     } catch {
       // Ignore logout network failures and clear local session anyway.
     }

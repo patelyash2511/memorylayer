@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import authStyles from './Auth.module.css'
 import styles from './Login.module.css'
-import { API_BASE, setSessionToken } from '../lib/auth'
+import { API_BASE, notifyAuthChange } from '../lib/auth'
 
 const API_URL = `${API_BASE}/auth/login`
 
@@ -92,6 +92,7 @@ export default function Login() {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email: formData.email.trim(),
           password: formData.password,
@@ -111,8 +112,7 @@ export default function Login() {
         return
       }
 
-      const result = await response.json()
-      setSessionToken(result.session_token)
+        notifyAuthChange()
       navigate('/dashboard')
     } catch {
       setErrors((current) => ({

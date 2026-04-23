@@ -6,6 +6,10 @@
 
 Free tier: 100 requests per rolling hour per API key.
 Returns (allowed: bool, retry_after_seconds: int).
+
+NOTE: This uses in-memory state. It is good enough for a single-instance
+launch, but production deployments with multiple instances should migrate to
+Redis-backed rate limiting.
 """
 
 from __future__ import annotations

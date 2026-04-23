@@ -1,32 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import authStyles from './Auth.module.css'
 import styles from './Signup.module.css'
-import { API_BASE, setSessionToken } from '../lib/auth'
+import { API_BASE, notifyAuthChange } from '../lib/auth'
 
 const API_URL = `${API_BASE}/auth/register`
 
 const strengthLabels = ['Weak', 'Fair', 'Good', 'Strong']
 
 const fieldOrder = ['name', 'email', 'password', 'confirmPassword', 'agreedToTerms']
-
-function CopyButton({ text, label = 'Copy' }) {
-  const [copied, setCopied] = useState(false)
-
-  const copy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }, [text])
-
-  return (
-    <button className={styles.copyBtn} onClick={copy} type="button">
-      {copied ? '✓ Copied!' : label}
-    </button>
-  )
-}
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -40,20 +23,6 @@ export default function Signup() {
   const [touched, setTouched] = useState({})
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
-  const [successData, setSuccessData] = useState(null)
-
-  useEffect(() => {
-    if (!successData) {
-      return undefined
-    }
-
-    const timer = window.setTimeout(() => {
-      navigate('/dashboard')
-    }, 3000)
-
-    return () => window.clearTimeout(timer)
-  }, [navigate, successData])
-
   function validateField(field, value) {
     switch (field) {
       case 'name':
@@ -187,6 +156,7 @@ export default function Signup() {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email: formData.email.trim(),
           name: formData.name.trim(),
@@ -223,12 +193,9 @@ export default function Signup() {
         return
       }
 
-      const result = await response.json()
-      if (result.session_token) {
-        setSessionToken(result.session_token)
-      }
-
-      setSuccessData(result)
+      await response.json()
+      notifyAuthChange()
+      navigate('/dashboard')
     } catch {
       setErrors((current) => ({
         ...current,
@@ -239,74 +206,7 @@ export default function Signup() {
     }
   }
 
-  const quickstart = successData
-    ? `pip install memorylayer-py
-
-from rec0 import Memory
-
-mem = Memory(api_key="${successData.api_key}")
-mem.store(user_id="user_123",
-          content="Hello from rec0!")`
-    : ''
-
   const passwordStrength = getPasswordStrength()
-
-  if (successData) {
-    return (
-      <div className={authStyles.page}>
-        <div className={authStyles.orbPrimary} />
-        <div className={authStyles.orbSecondary} />
-        <div className={authStyles.gridGlow} />
-
-        <motion.div
-          className={authStyles.successCard}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className={authStyles.successIcon}>✓</div>
-          <h1 className={authStyles.heading}>Account created</h1>
-          <p className={authStyles.subtle}>Save your API key now. You can reveal it later from the dashboard while signed in.</p>
-
-          <div className={authStyles.apiKeyBox}>
-            <code className={authStyles.apiKeyText}>{successData.api_key}</code>
-            <CopyButton text={successData.api_key} label="Copy" />
-          </div>
-
-          <div className={authStyles.successNotice}>
-            Session created. Redirecting you to the dashboard in 3 seconds.
-          </div>
-
-          <div className={styles.quickstartCard}>
-            <div className={styles.quickstartHeader}>
-              <span className={styles.quickstartLabel}>Quickstart</span>
-              <CopyButton text={quickstart} label="Copy" />
-            </div>
-            <pre className={styles.snippet}>
-              <code>{quickstart}</code>
-            </pre>
-          </div>
-
-          <div className={styles.actions}>
-            <button
-              className={authStyles.submitBtn}
-              onClick={() => navigate('/dashboard')}
-            >
-              Go to dashboard →
-            </button>
-            <a
-              className={authStyles.ghostLink}
-              href="https://memorylayer-production.up.railway.app/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Read the docs
-            </a>
-          </div>
-        </motion.div>
-      </div>
-    )
-  }
 
   return (
     <div className={authStyles.page}>

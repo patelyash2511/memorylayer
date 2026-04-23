@@ -166,6 +166,8 @@ the same stage.
   on what's working on the landing page.
 - **[HARDCODED CONTENT]** Marketing copy and pricing are likely hardcoded in JSX.
   When pricing changes, it requires a code deploy. Low priority, but worth noting.
+- **[NO FRONTEND AUTH TESTS]** No automated tests for signup/login/dashboard auth flows.
+  Non-blocking for MVP; add in post-launch sprint.
 
 ---
 
@@ -235,6 +237,7 @@ gitignore, `.env.example` documents required secrets.
 | 17 | Website analytics (PostHog / Plausible) | Product signal |
 | 18 | Dockerfile | Build reproducibility and portability |
 | 19 | Structured JSON logging + request ID tracing | Production debuggability |
+| 20 | Frontend auth-flow tests (Vitest + RTL) | Reduces signup/login regression risk post-launch |
 
 ---
 

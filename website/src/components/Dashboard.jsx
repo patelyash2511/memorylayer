@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
-import { clearSessionToken, fetchWithSession, getSessionToken } from '../lib/auth'
+import { clearSessionToken, fetchWithSession } from '../lib/auth'
 
 function CopyBtn({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false)
@@ -40,11 +40,6 @@ export default function Dashboard() {
   }, [navigate])
 
   const loadDashboard = useCallback(async () => {
-    if (!getSessionToken()) {
-      handleUnauthorized()
-      return
-    }
-
     setLoading(true)
     setError('')
 

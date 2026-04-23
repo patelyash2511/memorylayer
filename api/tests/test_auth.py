@@ -102,7 +102,8 @@ def register(client: TestClient, email: str = "dev@example.com", name: str = "Ya
     data = resp.json()
     assert data["api_key"].startswith("r0_live_sk_")
     assert data["warning"]
-    assert "session_token" in data
+    assert "session_token" not in data
+    assert resp.cookies.get("session_token", "").startswith("session_")
     return data["api_key"]
 
 
@@ -119,7 +120,9 @@ def test_register_success(client):
     assert data["api_key"].startswith("r0_live_sk_")
     assert "key_prefix" in data
     assert data["warning"] == "Save this key now. You can reveal it later from the dashboard while signed in."
-    assert data["session_token"].startswith("session_")
+    assert "session_token" not in data
+    assert resp.cookies.get("session_token", "").startswith("session_")
+    assert "HttpOnly" in resp.headers.get("set-cookie", "")
 
 
 def test_register_duplicate_email(client):
@@ -302,8 +305,10 @@ def test_login_success(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["email"] == "login@test.com"
-    assert data["session_token"].startswith("session_")
     assert "account_id" in data
+    assert "session_token" not in data
+    assert resp.cookies.get("session_token", "").startswith("session_")
+    assert "HttpOnly" in resp.headers.get("set-cookie", "")
 
 
 def test_login_wrong_password(client):
@@ -319,10 +324,10 @@ def test_login_unknown_email(client):
 
 
 def test_session_auth_me(client):
-    """GET /auth/me works with X-Session-Token header."""
+    """GET /auth/me works with the backend-issued session cookie."""
     resp = client.post("/v1/auth/register", json={"email": "sess@test.com", "name": "S", "password": "sesspass123"})
-    token = resp.json()["session_token"]
-    resp = client.get("/v1/auth/me", headers={"X-Session-Token": token})
+    assert resp.cookies.get("session_token", "").startswith("session_")
+    resp = client.get("/v1/auth/me")
     assert resp.status_code == 200
     assert resp.json()["email"] == "sess@test.com"
     assert len(resp.json()["keys"]) == 1
@@ -353,15 +358,15 @@ def test_auth_me_returns_non_revealable_legacy_keys(db_session, monkeypatch):
 
 def test_logout_invalidates_session(client):
     resp = client.post("/v1/auth/register", json={"email": "out@test.com", "name": "O", "password": "outpass1234"})
-    token = resp.json()["session_token"]
+    assert resp.cookies.get("session_token", "").startswith("session_")
     # session works before logout
-    assert client.get("/v1/auth/me", headers={"X-Session-Token": token}).status_code == 200
+    assert client.get("/v1/auth/me").status_code == 200
     # logout
-    resp = client.post("/v1/auth/logout", headers={"X-Session-Token": token})
+    resp = client.post("/v1/auth/logout")
     assert resp.status_code == 200
     assert resp.json()["logged_out"] is True
     # session no longer works
-    resp = client.get("/v1/auth/me", headers={"X-Session-Token": token})
+    resp = client.get("/v1/auth/me")
     assert resp.status_code == 401
 
 

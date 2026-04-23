@@ -114,7 +114,6 @@ class RegisterResponse(BaseModel):
     plan: str
     api_key: str
     key_prefix: str
-    session_token: str
     warning: str = "Save this key now. You can reveal it later from the dashboard while signed in."
     docs: str = "https://docs.rec0.ai/quickstart"
 
@@ -186,7 +185,6 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     account_id: str
     email: str
-    session_token: str
 
 
 class LogoutResponse(BaseModel):
