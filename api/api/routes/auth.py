@@ -186,9 +186,13 @@ def get_current_account(
     db: Session = Depends(get_db),
 ) -> Account:
     """FastAPI dependency — returns Account for the authenticated key or session."""
-    token = session_token or x_session_token
+    if x_api_key:
+        return _get_account_for_key(x_api_key, db)
+
+    token = x_session_token or session_token
     if token:
         return _get_account_for_session(token, db)
+
     return _get_account_for_key(x_api_key, db)
 
 
