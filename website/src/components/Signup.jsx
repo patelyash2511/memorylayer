@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import authStyles from './Auth.module.css'
@@ -23,6 +23,20 @@ export default function Signup() {
   const [touched, setTouched] = useState({})
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+
+  useEffect(() => {
+    if (!success) {
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate('/dashboard')
+    }, 3000)
+
+    return () => window.clearTimeout(timer)
+  }, [success, navigate])
   function validateField(field, value) {
     switch (field) {
       case 'name':
@@ -193,9 +207,10 @@ export default function Signup() {
         return
       }
 
-      await response.json()
+      const data = await response.json()
       notifyAuthChange()
-      navigate('/dashboard')
+      setApiKey(data.api_key || '')
+      setSuccess(true)
     } catch {
       setErrors((current) => ({
         ...current,
@@ -207,6 +222,45 @@ export default function Signup() {
   }
 
   const passwordStrength = getPasswordStrength()
+
+  if (success) {
+    return (
+      <div className={authStyles.page}>
+        <div className={authStyles.orbPrimary} />
+        <div className={authStyles.orbSecondary} />
+        <div className={authStyles.gridGlow} />
+
+        <motion.div
+          className={authStyles.card}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          <div className={authStyles.eyebrow}>Account created</div>
+          <h1 className={authStyles.heading}>Save your API key</h1>
+          <p className={authStyles.subtle}>This key is shown once. Your session cookie is already set securely by the backend.</p>
+
+          <div className={styles.quickstartCard}>
+            <div className={styles.quickstartHeader}>
+              <span className={styles.quickstartLabel}>API key</span>
+              <button
+                type="button"
+                className={styles.copyBtn}
+                onClick={() => navigator.clipboard.writeText(apiKey)}
+              >
+                Copy
+              </button>
+            </div>
+            <pre className={styles.snippet}>
+              <code>{apiKey}</code>
+            </pre>
+          </div>
+
+          <p className={authStyles.footerText}>Redirecting to dashboard in 3 seconds…</p>
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <div className={authStyles.page}>

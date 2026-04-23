@@ -287,7 +287,7 @@ def register(
     "/auth/login",
     response_model=LoginResponse,
     summary="Log in with email and password",
-    description="Returns a session token valid for 30 days.",
+    description="Starts a secure HTTP-only session cookie valid for 30 days.",
 )
 def login(
     payload: LoginRequest,
@@ -321,7 +321,7 @@ def login(
     "/auth/logout",
     response_model=LogoutResponse,
     summary="Log out and invalidate session",
-    description="Deletes the session token. The client should also discard the token.",
+    description="Deletes the server session and clears the session cookie.",
 )
 def logout(
     request: Request,
