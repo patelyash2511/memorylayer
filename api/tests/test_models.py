@@ -20,7 +20,8 @@ def test_memory_create_schema():
 
 def test_memory_query_schema_defaults():
     q = MemoryQuery(user_id="u1", app_id="app1", query="what did I say?")
-    assert q.limit == 5
+    assert q.limit == 10
+    assert q.offset == 0
 
 
 def test_database_exports():

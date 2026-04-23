@@ -21,10 +21,10 @@ import requests
 
 from rec0.database import Base, get_db
 from rec0.models import Memory as MemoryModel  # noqa: F401
+from rec0.ratelimit import reset_rate_limiter
 from rec0.client import Memory
 from api.main import app
 
-TEST_SECRET = "sdk-test-key"
 APP_ID = "test-app"
 USER_ID = "sdk-user"
 
@@ -49,7 +49,10 @@ def db_session():
 @pytest.fixture()
 def api_client(db_session, monkeypatch):
     """FastAPI TestClient wired to in-memory DB."""
-    monkeypatch.setenv("SECRET_KEY", TEST_SECRET)
+    reset_rate_limiter()
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
+    monkeypatch.setenv("REC0_ENV", "development")
 
     def override_get_db():
         yield db_session
@@ -67,7 +70,14 @@ def sdk(api_client, monkeypatch):
     We replace each HTTP method on the session with a wrapper that delegates
     to the TestClient, so no real network is used.
     """
-    client = Memory(api_key=TEST_SECRET, app_id=APP_ID, base_url="http://testserver/v1")
+    register = api_client.post(
+        "/v1/auth/register",
+        json={"email": "sdk-tests@example.com", "name": "SDK Tests", "password": "testpass123"},
+    )
+    assert register.status_code == 201
+    api_key = register.json()["api_key"]
+
+    client = Memory(api_key=api_key, app_id=APP_ID, base_url="http://testserver/v1")
 
     # Capture session-level headers (e.g. X-API-Key) before we monkey-patch
     session_headers = dict(client._session.headers)

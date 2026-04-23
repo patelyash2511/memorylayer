@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from rec0.database import Base, get_db
 from rec0.models import Memory  # noqa: F401
+from rec0.ratelimit import reset_rate_limiter
 from api.main import app
 
 MEMORIES = [
@@ -38,6 +39,7 @@ def db_session():
 
 @pytest.fixture()
 def client(db_session, monkeypatch):
+    reset_rate_limiter()
     monkeypatch.delenv("SECRET_KEY", raising=False)
     monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
     monkeypatch.setenv("REC0_ENV", "development")
