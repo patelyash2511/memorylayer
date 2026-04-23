@@ -12,9 +12,6 @@ from rec0.database import Base, get_db
 from rec0.models import Memory  # noqa: F401
 from api.main import app
 
-TEST_SECRET = "test-secret-123"
-API_HEADERS = {"X-API-Key": TEST_SECRET}
-
 MEMORIES = [
     {"user_id": "u1", "app_id": "app1", "content": "I love eating pizza on Fridays"},
     {"user_id": "u1", "app_id": "app1", "content": "My favourite sport is basketball"},
@@ -41,7 +38,9 @@ def db_session():
 
 @pytest.fixture()
 def client(db_session, monkeypatch):
-    monkeypatch.setenv("SECRET_KEY", TEST_SECRET)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SECRET_KEY_HASH", raising=False)
+    monkeypatch.setenv("REC0_ENV", "development")
 
     def override_get_db():
         yield db_session
@@ -52,18 +51,28 @@ def client(db_session, monkeypatch):
     app.dependency_overrides.clear()
 
 
-def _store_all(client):
+@pytest.fixture()
+def api_headers(client):
+    resp = client.post(
+        "/v1/auth/register",
+        json={"email": "recall-tests@example.com", "name": "Recall Tests", "password": "testpass123"},
+    )
+    assert resp.status_code == 201
+    return {"X-API-Key": resp.json()["api_key"]}
+
+
+def _store_all(client, api_headers):
     for mem in MEMORIES:
-        r = client.post("/v1/memory/store", json=mem, headers=API_HEADERS)
+        r = client.post("/v1/memory/store", json=mem, headers=api_headers)
         assert r.status_code == 201
 
 
-def test_recall_top_result_is_most_relevant(client):
-    _store_all(client)
+def test_recall_top_result_is_most_relevant(client, api_headers):
+    _store_all(client, api_headers)
     response = client.post(
         "/v1/memory/recall",
         json={"user_id": "u1", "app_id": "app1", "query": "what food do I like?", "limit": 3},
-        headers=API_HEADERS,
+        headers=api_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -85,22 +94,22 @@ def test_recall_top_result_is_most_relevant(client):
     )
 
 
-def test_recall_respects_limit(client):
-    _store_all(client)
+def test_recall_respects_limit(client, api_headers):
+    _store_all(client, api_headers)
     response = client.post(
         "/v1/memory/recall",
         json={"user_id": "u1", "app_id": "app1", "query": "food", "limit": 2},
-        headers=API_HEADERS,
+        headers=api_headers,
     )
     assert response.status_code == 200
     assert len(response.json()["memories"]) == 2
 
 
-def test_recall_empty_returns_empty_list(client):
+def test_recall_empty_returns_empty_list(client, api_headers):
     response = client.post(
         "/v1/memory/recall",
         json={"user_id": "nobody", "app_id": "app1", "query": "anything"},
-        headers=API_HEADERS,
+        headers=api_headers,
     )
     assert response.status_code == 200
     assert response.json()["memories"] == []
@@ -115,24 +124,26 @@ def test_recall_requires_api_key(client):
     assert response.status_code == 401
 
 
-def test_list_returns_all_memories(client):
-    _store_all(client)
+def test_list_returns_all_memories(client, api_headers):
+    _store_all(client, api_headers)
     response = client.get(
         "/v1/memory/list",
         params={"user_id": "u1", "app_id": "app1"},
-        headers=API_HEADERS,
+        headers=api_headers,
     )
     assert response.status_code == 200
     data = response.json()
     assert len(data["memories"]) == 3
     assert data["total_memories"] == 3
     assert data["rec0_version"] == "1.0.0"
+    assert data["limit"] == 20
+    assert data["offset"] == 0
 
-def test_list_empty_for_unknown_user(client):
+def test_list_empty_for_unknown_user(client, api_headers):
     response = client.get(
         "/v1/memory/list",
         params={"user_id": "nobody", "app_id": "app1"},
-        headers=API_HEADERS,
+        headers=api_headers,
     )
     assert response.status_code == 200
     assert response.json()["memories"] == []

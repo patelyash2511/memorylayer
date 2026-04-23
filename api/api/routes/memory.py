@@ -14,9 +14,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
-import hashlib
 import logging
-import os
 import time
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -43,9 +41,6 @@ from rec0.summaries import generate_summary
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-_DEV_KEY = "r0_dev_key_2026"
-
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 
@@ -77,59 +72,10 @@ def verify_api_key(
     x_api_key: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
 ) -> str:
-    """Verify the X-API-Key header.
-
-    Priority order:
-      1. In production: reject the hardcoded dev key.
-      2. Dev key (non-production only): allowed without DB lookup.
-      3. Plaintext SECRET_KEY env var (for tests / backward compat).
-      4. Bcrypt SECRET_KEY_HASH env var (old single-key production mode).
-      5. Full DB lookup with bcrypt verification (new multi-tenant mode).
-
-    Sets request.state.account and request.state.key_prefix when a real
-    account is found so that _track_op can increment ops_used.
-    """
+    """Verify X-API-Key using DB-backed tenant keys only."""
     if not x_api_key:
         raise _auth_error()
 
-    env = os.environ.get("REC0_ENV", "development")
-
-    # Production: reject dev key with a helpful message
-    if env == "production" and x_api_key == _DEV_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "invalid_api_key",
-                "message": "Register at rec0.ai to get your free API key.",
-                "docs": "https://docs.rec0.ai/quickstart",
-            },
-        )
-
-    # Dev key in non-production
-    if env != "production" and x_api_key == _DEV_KEY:
-        request.state.account_id = "dev_shared"
-        return x_api_key
-
-    # Legacy: plaintext SECRET_KEY (tests, backward compat)
-    secret = os.environ.get("SECRET_KEY", "")
-    if secret and x_api_key == secret:
-        request.state.account_id = f"legacy_secret:{hashlib.sha256(secret.encode()).hexdigest()[:16]}"
-        logger.warning("Using plaintext SECRET_KEY. Register at rec0.ai for production keys.")
-        return x_api_key
-
-    # Legacy: bcrypt SECRET_KEY_HASH (old single-key mode)
-    key_hash_env = os.environ.get("SECRET_KEY_HASH", "")
-    if key_hash_env:
-        try:
-            import bcrypt as _bcrypt
-            if _bcrypt.checkpw(x_api_key.encode(), key_hash_env.encode()):
-                request.state.account_id = f"legacy_hash:{hashlib.sha256(key_hash_env.encode()).hexdigest()[:16]}"
-                return x_api_key
-        except Exception:
-            pass
-        raise _auth_error()
-
-    # DB-backed multi-tenant lookup
     prefix = x_api_key[:20] + "..." if len(x_api_key) >= 20 else x_api_key
     candidates = (
         db.query(ApiKey)
@@ -137,44 +83,41 @@ def verify_api_key(
         .all()
     )
 
-    matched: Optional[ApiKey] = None
+    key_record: Optional[ApiKey] = None
     for candidate in candidates:
         if check_api_key(x_api_key, candidate.key_hash):
-            matched = candidate
+            key_record = candidate
             break
 
-    if not matched:
+    if not key_record:
         raise _auth_error()
 
-    account = db.query(Account).filter(Account.id == matched.account_id).first()
+    account = db.query(Account).filter(Account.id == key_record.account_id).first()
     if not account:
         raise _auth_error()
 
-    # Update last_used_at (flushed; committed with the endpoint's db.commit)
-    matched.last_used_at = datetime.now(timezone.utc)
+    key_record.last_used_at = datetime.now(timezone.utc)
     db.flush()
 
-    # Attach account to request state for _track_op
     request.state.account = account
     request.state.account_id = str(account.id)
-    request.state.key_prefix = prefix
+    request.state.key_prefix = key_record.key_prefix
 
-    return x_api_key
+    return str(key_record.account_id)
 
 
-def _check_rate(api_key: str) -> None:
-    """Raise 429 if the API key has exceeded the hourly rate limit."""
-    allowed, retry_after = check_rate_limit(api_key)
+def _check_rate(account_id: str) -> None:
+    """Raise 429 if the account has exceeded the hourly rate limit."""
+    allowed, retry_after = check_rate_limit(account_id)
     if not allowed:
         raise _rate_limit_error(retry_after)
 
 
-def _get_account_scope_id(request: Request, api_key: str) -> str:
+def _get_account_scope_id(request: Request) -> str:
     account_id = getattr(request.state, "account_id", None)
     if account_id:
         return str(account_id)
-    # Last-resort isolation fallback for unusual auth paths.
-    return f"key:{hashlib.sha256(api_key.encode()).hexdigest()[:16]}"
+    raise _auth_error()
 
 
 def _track_op(request: Request, db: Session) -> None:
@@ -227,12 +170,12 @@ def store_memory(
     payload: MemoryCreate,
     request: Request,
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> Memory:
     """Store a memory with auto-generated embedding and summary."""
-    _check_rate(api_key)
+    _check_rate(account_id)
     _track_op(request, db)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    account_scope_id = _get_account_scope_id(request)
 
     emb = embed(payload.content)
     emb_json = json.dumps(emb) if emb is not None else None
@@ -264,12 +207,12 @@ def recall_memories(
     payload: MemoryQuery,
     request: Request,
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> RecallListResponse:
     """Semantic recall using fastembed ONNX local model (BAAI/bge-small-en-v1.5). No external APIs."""
-    _check_rate(api_key)
+    _check_rate(account_id)
     _track_op(request, db)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    account_scope_id = _get_account_scope_id(request)
     t_start = time.monotonic()
 
     memories = (
@@ -362,26 +305,33 @@ def recall_memories(
 def list_memories(
     request: Request,
     user_id: str = Query(...),
-    app_id: str = Query(...),
+    app_id: Optional[str] = Query(default=None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> MemoryListResponse:
     """List all active memories for a user."""
-    _check_rate(api_key)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    _check_rate(account_id)
+    account_scope_id = _get_account_scope_id(request)
 
     query = db.query(Memory).filter(
         Memory.account_id == account_scope_id,
         Memory.user_id == user_id,
-        Memory.app_id == app_id,
         Memory.is_active.is_(True),
     )
+    if app_id:
+        query = query.filter(Memory.app_id == app_id)
+
     total = query.count()
     memories = query.order_by(Memory.created_at).offset(offset).limit(limit).all()
 
-    return MemoryListResponse(memories=memories, total_memories=total)
+    return MemoryListResponse(
+        memories=memories,
+        total_memories=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.delete(
@@ -394,11 +344,11 @@ def delete_memory(
     memory_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> None:
     """Soft-delete a memory by ID (sets is_active=False)."""
-    _check_rate(api_key)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    _check_rate(account_id)
+    account_scope_id = _get_account_scope_id(request)
 
     memory = (
         db.query(Memory)

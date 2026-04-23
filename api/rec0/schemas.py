@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 REC0_VERSION = "1.0.0"
 
@@ -47,9 +47,10 @@ class MemoryRecallResponse(MemoryResponse):
 
 class MemoryQuery(BaseModel):
     user_id: str
-    app_id: str
+    app_id: Optional[str] = None
     query: str
-    limit: int = 5
+    limit: int = Field(default=10, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
 
 
 class RecallListResponse(BaseModel):
@@ -62,6 +63,8 @@ class RecallListResponse(BaseModel):
 class MemoryListResponse(BaseModel):
     memories: List[MemoryResponse]
     total_memories: int
+    limit: int = 20
+    offset: int = 0
     rec0_version: str = REC0_VERSION
 
 

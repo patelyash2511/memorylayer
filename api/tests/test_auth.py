@@ -255,13 +255,13 @@ def test_ops_limit_enforced(client, db_session):
 # ── Dev key behaviour ──────────────────────────────────────────────────────────
 
 
-def test_dev_key_allowed_in_development(client):
+def test_dev_key_rejected_in_memory_routes(client):
     resp = client.post(
         "/v1/memory/store",
         json={"user_id": "u1", "app_id": "a1", "content": "dev test"},
         headers={"X-API-Key": "r0_dev_key_2026"},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 401
 
 
 def test_dev_key_rejected_in_production(prod_client):

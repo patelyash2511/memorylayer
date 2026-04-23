@@ -106,7 +106,7 @@ async def _decay_loop() -> None:
 async def lifespan(app: FastAPI):
     secret = os.environ.get("SECRET_KEY", "")
     if secret:
-        logger.info("SECRET_KEY loaded: %s...", secret[:5])
+        logger.info("SECRET_KEY loaded from environment")
     else:
         logger.warning("SECRET_KEY is NOT set — all API requests will be rejected!")
 
