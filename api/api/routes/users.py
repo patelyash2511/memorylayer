@@ -41,11 +41,11 @@ def delete_user(
     request: Request,
     app_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> UserDeleteResponse:
     """Soft-delete all memories for a user (GDPR right to erasure)."""
-    _check_rate(api_key)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    _check_rate(account_id)
+    account_scope_id = _get_account_scope_id(request)
 
     query = db.query(Memory).filter(
         Memory.account_id == account_scope_id,
@@ -74,11 +74,11 @@ def export_user(
     request: Request,
     app_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
-    api_key: str = Depends(verify_api_key),
+    account_id: str = Depends(verify_api_key),
 ) -> UserExportResponse:
     """Export all memories for a user in portable JSON format."""
-    _check_rate(api_key)
-    account_scope_id = _get_account_scope_id(request, api_key)
+    _check_rate(account_id)
+    account_scope_id = _get_account_scope_id(request)
 
     query = db.query(Memory).filter(
         Memory.account_id == account_scope_id,
