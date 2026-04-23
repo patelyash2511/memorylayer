@@ -73,12 +73,14 @@ def _create_session(account_id: str, db: Session) -> str:
 def _set_session_cookie(response: Response, token: str, request: Request) -> None:
     env = os.environ.get("REC0_ENV", "development")
     secure_cookie = request.url.scheme == "https" or env == "production"
+    # Cross-origin frontend (e.g. Vercel) -> API (Railway) needs SameSite=None.
+    same_site = "none" if env == "production" else "strict"
     response.set_cookie(
         key=_SESSION_COOKIE,
         value=token,
         httponly=True,
         secure=secure_cookie,
-        samesite="strict",
+        samesite=same_site,
         max_age=_SESSION_DAYS * 24 * 60 * 60,
         path="/",
     )
@@ -87,11 +89,12 @@ def _set_session_cookie(response: Response, token: str, request: Request) -> Non
 def _clear_session_cookie(response: Response, request: Request) -> None:
     env = os.environ.get("REC0_ENV", "development")
     secure_cookie = request.url.scheme == "https" or env == "production"
+    same_site = "none" if env == "production" else "strict"
     response.delete_cookie(
         key=_SESSION_COOKIE,
         httponly=True,
         secure=secure_cookie,
-        samesite="strict",
+        samesite=same_site,
         path="/",
     )
 
