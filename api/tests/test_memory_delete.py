@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from rec0.database import Base, get_db
 from rec0.models import Memory as MemoryModel  # noqa: F401
 from rec0.ratelimit import reset_rate_limiter
-from api.main import app
+from main import app
 
 @pytest.fixture()
 def db_session():

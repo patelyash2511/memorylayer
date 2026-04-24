@@ -3,7 +3,7 @@
 # https://github.com/patelyash2511/rec0/blob/main/LICENSE
 
 from starlette.testclient import TestClient
-from api.main import app
+from main import app
 
 client = TestClient(app)
 

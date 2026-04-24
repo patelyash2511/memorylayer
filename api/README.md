@@ -66,7 +66,7 @@ SECRET_KEY=your-secret-key
 
 **3. Start the server**
 ```bash
-uvicorn api.main:app --reload
+uvicorn main:app --reload
 ```
 
 Server runs at `http://localhost:8000` — tables are created automatically on first start.
@@ -162,7 +162,7 @@ cp .env.example .env
 ### 3. Run the API
 
 ```bash
-uvicorn api.main:app --reload
+uvicorn main:app --reload
 ```
 
 ### 4. Health check

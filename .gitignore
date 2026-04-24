@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .env
+.env.local
 .venv/
 venv/
 dist/
@@ -12,3 +13,6 @@ node_modules/
 memorylayer.db
 memorylayer/
 .pytest_cache/
+.coverage
+.vscode/
+.idea/

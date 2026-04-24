@@ -23,7 +23,7 @@ from rec0.database import Base, get_db
 from rec0.models import Memory as MemoryModel  # noqa: F401
 from rec0.ratelimit import reset_rate_limiter
 from rec0.client import Memory
-from api.main import app
+from main import app
 
 APP_ID = "test-app"
 USER_ID = "sdk-user"
